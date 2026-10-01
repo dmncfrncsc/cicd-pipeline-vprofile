@@ -1,0 +1,28 @@
+# Build output (a built WAR must never be committed: source-use permission is unresolved)
+target/
+*.war
+
+# Terraform (state can contain secrets; .terraform.lock.hcl is NOT ignored on purpose)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+*.tfplan
+
+# Credentials and local secrets
+.env
+*.pem
+*.key
+*.pub.bak
+.aws/
+credentials
+
+# Editor and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
