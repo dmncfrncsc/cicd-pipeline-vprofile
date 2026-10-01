@@ -7,9 +7,9 @@ Public handoff record, last updated 2026-10-01. It holds decisions, state, and n
 - **Goal:** design and build a CI/CD pipeline that builds the instructor-provided VProfile reference application and delivers it to an approved Terraform-managed AWS target.
 - **Portfolio position:** Project 3 of 5 in an AWS portfolio.
 - **Current phase:** Phase 1 (GitHub Actions CI, build/test only), step 1.
-- **Done and verified:** public GitHub repository created and cloned locally; local branch renamed to `main`; `.gitignore` and `README.md` created (not yet committed).
-- **Not done:** no commit yet, no submodule, no workflow, no build, and no AWS resources for this project.
-- **Next step:** make the first commit and push `main`, confirm GitHub adopts `main` as the default branch, then add the pinned submodule, verify a local Maven build and tests, and create the Actions workflow.
+- **Done and verified:** public GitHub repository created and cloned locally; `main` is the default branch on GitHub; README, PROGRESS, NOTES, and `.gitignore` committed and pushed. The public-safe files were scanned for account-specific details before the push.
+- **Not done:** no submodule, workflow, build, or AWS resources for this project yet.
+- **Next step:** add the pinned VProfile source submodule (the author's fork), verify a local Maven build and tests, then create the Actions workflow.
 
 ## Decisions (approved 2026-10-01)
 
