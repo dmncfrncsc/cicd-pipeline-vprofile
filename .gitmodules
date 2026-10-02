@@ -1,0 +1,3 @@
+[submodule "vprofile-src"]
+	path = vprofile-src
+	url = https://github.com/dmncfrncsc/vprofile-project.git
