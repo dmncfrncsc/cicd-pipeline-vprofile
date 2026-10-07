@@ -24,7 +24,9 @@ The VProfile app was made by the instructor, not by the author of Project 3. Ear
 
 **Maven and its POM:** Maven builds Java apps. POM means Project Object Model; `pom.xml` lists build settings and dependencies (libraries the app uses). The instructor supplied VProfile and its POM; developers normally maintain the POM for an app they own. In this project, the script edits the copied POM in `build-work/`, not the pinned file in `vprofile-src/`; Maven packages the app as a **WAR**.
 
-**Why test count matters:** An earlier Maven run reported `BUILD SUCCESS` but ran 0 tests because the app's tests use JUnit 4 while Maven had only the JUnit 5 test engine. Adding JUnit Vintage made a later Maven log report 9 tests, showing why a green build alone is not enough if no tests ran.
+**Why test count matters:** An earlier Maven run reported `BUILD SUCCESS` but ran 0 tests because the app's tests use JUnit 4 while Maven had only the JUnit 5 test engine (earlier explanation; see the caution below). Adding JUnit Vintage made a later Maven log report 9 tests, showing why a green build alone is not enough if no tests ran.
+
+**Caution (verified 2026-10-07):** In a pull request test, the script's Vintage line was commented out, yet the CI run still reported 9 tests (Surefire 3.6.0). A later run reported 0. The cause is unexplained, so the Vintage fix is not yet proven necessary in CI.
 
 **How JUnit Vintage fits:** JUnit Vintage lets the JUnit 5 test system run JUnit 4 tests. The shared script adds this library to the temporary POM copy, checks Maven's test summary, and leaves the pinned source POM unchanged.
 
@@ -74,7 +76,7 @@ The replacement must put `</dependencies>` back. Without it, the POM is invalid 
 
 **Continuous integration (CI)** means a computer automatically builds and checks code when a change happens. A pipeline is the list of steps that computer runs. A GitHub Actions **workflow** is the file that tells GitHub which steps to run and when. In this project, the pipeline lives in its own repository and gets the pinned VProfile version through the `vprofile-src` submodule.
 
-The Phase 1 workflow is configured for three events: `pull_request` checks a proposed change, `push` to `main` checks a commit after it is pushed, and `workflow_dispatch` starts a run by hand. The job builds and tests without AWS access. **Polling** checks for changes on a timer; a **webhook** sends a message when a change happens, such as after a push. A **required status check** is a passing job GitHub must see before it allows a change into `main`; the approved design is to require `build-test` after its first successful run.
+The Phase 1 workflow is configured for three events: `pull_request` checks a proposed change, `push` to `main` checks a commit after it is pushed, and `workflow_dispatch` starts a run by hand. The job builds and tests without AWS access. **Polling** checks for changes on a timer; a **webhook** sends a message when a change happens, such as after a push. A **required status check** is a passing job GitHub must see before it allows a change into `main`; the ruleset `protect-main` now requires `build-test` (verified 2026-10-07).
 
 Public-repo logs may be visible to other people. Not uploading an artifact does not hide text printed by `tee`; build output still appears in the workflow log. Never print VProfile source files, WAR contents, passwords, or keys in those logs. Hosted CI computers save you from running your own Jenkins server, but they may not be able to reach a private EC2 computer.
 
@@ -89,6 +91,20 @@ Jenkins is planned for the next phase. Its **controller** organizes jobs; an **a
 **Token and permissions:** GitHub gives each workflow run a `GITHUB_TOKEN`, and `permissions` limits what that token can do. `contents: read` allows the workflow to read repository contents without permission to push changes; `persist-credentials: false` tells checkout not to save the token as a Git credential in the repository's local configuration.
 
 **Concurrency groups:** This workflow builds a group from `github.workflow` and `github.ref`. With `cancel-in-progress: true`, a new run cancels an older run only when they share a group and the older run is still running; two runs on `main` share a group, while a pull request uses a different ref.
+
+**Three triggers (verified 2026-10-07):** `push` runs after a commit lands on `main`, `workflow_dispatch` runs when you click "Run workflow" by hand, and `pull_request` runs on a proposed change before it merges. In this project, run #4 was manual (40 s), and PR #1's check passed (28 s).
+
+**Pull request (PR):** A PR asks GitHub to merge one branch into another, such as `docs/record-phase1-checks` into `main`. GitHub tests a temporary merge of the two; the PR #2 log shows `refs/remotes/pull/2/merge`. A PR is how a change reaches `main` now.
+
+**Ruleset and required check (verified 2026-10-07):** A ruleset is a set of rules GitHub applies to chosen branches. `protect-main` is active on `main`, requires `build-test` from GitHub Actions, and blocks force pushes. On PR #2, the failing check carried a Required badge and the Merge button was disabled. A direct push to `main` should now be refused, but that was not tested.
+
+**Why test a failure path:** A pipeline that has only passed has not shown it can fail. In PR #2, the count pattern was changed to `99999`, so the job ended with `ERROR: Maven did not report any tests as run.` and exit code 1, even though Maven said `BUILD SUCCESS`. This shows the script's error path works. It does not show the original check rejects 0 tests, because `99999` fails for any count.
+
+**Token permissions (verified):** The Set up job log listed only `Contents: read` and `Metadata: read`, so the workflow cannot push changes to the repository.
+
+**Checkout credential cleanup (verified):** With `persist-credentials: false`, checkout stores a temporary credential file outside the repository and adds `includeIf` pointers to it in the repo's config. After the checkout, it removes the pointers and logs `Removing credentials config`. The hosted runner is deleted when the job ends.
+
+**Apps that add checks (verified access, reported origin):** A GitHub App with "All repositories" access can add its own check and comment to a PR without appearing in the workflow file. SonarQubeCloud did this on PRs #1 and #2. You reported it came from your Udemy course. It is not part of Project 3's scope.
 
 ## 4. Save and deliver the built app
 
@@ -131,3 +147,7 @@ A syntax check, a Maven log, a created WAR, and the script's final success messa
 **`git pull --ff-only origin main`:** `origin` is the remote's short name, and `main` is the branch to update. `--ff-only` moves local `main` forward when it is simply behind the remote; if the histories have diverged, Git stops instead of making a merge commit. This is useful after creating a file through GitHub's web UI.
 
 **The Git pager:** Git may show long output one screen at a time; press `q` to leave the pager. `git --no-pager <command>`, such as `git --no-pager diff --stat NOTES.md`, prints the command's output without opening it.
+
+**Surefire and test engines:** Surefire is the Maven plugin that runs tests. JUnit 4 and JUnit 5 are different test systems, and the Vintage engine lets JUnit 5 run JUnit 4 tests. GPT reported that Surefire 3.6.0 can add the Vintage engine itself; that guide was not independently read, so treat it as a plausible, unverified explanation. `mvn dependency:tree -Dincludes=org.junit.vintage` showed no Vintage engine in the project's dependencies, but that does not show what Surefire adds on its own.
+
+**Commands used:** `git show <commit> -- <file>` shows what one commit changed in one file. `git fetch --prune` removes local pointers to branches deleted on GitHub (it printed `[deleted] ... origin/test/failure-path`). `git branch -d` deletes a branch only if it is merged, and `-D` forces it. `git switch -c <name>` creates and enters a new branch. `git status -sb` prints a one-line branch summary. `cut -c1-100` trims long lines so output stays readable.
