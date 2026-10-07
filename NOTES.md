@@ -4,13 +4,15 @@ These notes explain the project in the order its parts fit together. They define
 
 ## Project map — how the parts fit
 
-Project 3 uses instructor-provided VProfile to practice an automated build and delivery flow. In Phase 1, GitHub Actions is meant to get the pinned source, run the shared build script with Maven, and report pass or fail; this phase has no AWS access. Jenkins and AWS deployment come later, with separate design and cost approval; `PROGRESS.md` records which parts exist and what has been verified.
+Project 3 uses instructor-provided VProfile to practice an automated build and delivery flow. In Phase 1, GitHub Actions gets the pinned source, runs the shared build script with Maven, and reports pass or fail; this phase has no AWS access. Jenkins and AWS deployment come later, with separate design and cost approval; `PROGRESS.md` records which parts exist and what has been verified.
 
 ## 1. Choose the exact app code
 
 **Source code** is the files that make the app. A **Git commit** is one saved version of those files. A **fork** is your own copy of someone else's Git repo. A **submodule** is a pointer from one repo to another repo at one exact commit.
 
 **In this project:** the Project 3 repo points to VProfile source through `vprofile-src`. Pinning a commit means each build can use the same app version. Changing the pointer selects a different version.
+
+A submodule stores an exact commit ID, not a branch name. `git ls-remote` lists references advertised by the remote, so not seeing a commit ID there does not prove that the commit cannot be fetched; a commit that no retained reference points to may later become unavailable.
 
 Different VProfile branches may use different Java versions. Earlier read-only checks identified `origin/local` and `origin/atom` as Java 17 WAR candidates, and `main` and `ci-jenkins` as Java 8 candidates. A branch name does not prove the app builds; inspect its files and build it before choosing.
 
@@ -70,13 +72,23 @@ The replacement must put `</dependencies>` back. Without it, the POM is invalid 
 
 ## 3. Run the build checks automatically
 
-**Continuous integration (CI)** means a computer automatically builds and checks code when a change happens. A pipeline is the list of steps that computer runs. A GitHub Actions **workflow** is the file that tells GitHub which steps to run and when. The pipeline can live beside the app code or in a separate repo that fetches a pinned app version; the repo layout is still undecided.
+**Continuous integration (CI)** means a computer automatically builds and checks code when a change happens. A pipeline is the list of steps that computer runs. A GitHub Actions **workflow** is the file that tells GitHub which steps to run and when. In this project, the pipeline lives in its own repository and gets the pinned VProfile version through the `vprofile-src` submodule.
 
-GitHub Actions is planned for the first phase. A `pull_request` starts checks for a proposed change, a `push` to `main` starts checks after code is pushed there, and `workflow_dispatch` starts a run by hand. **Polling** checks for changes on a timer; a **webhook** sends a message when a change happens, such as after a push. Example: for a pull request, the planned workflow builds and tests the code, then shows a pass or fail result. It does not use AWS. A **required status check** is a passing job GitHub must see before it allows a change into `main`; it can be required after it has succeeded once.
+The Phase 1 workflow is configured for three events: `pull_request` checks a proposed change, `push` to `main` checks a commit after it is pushed, and `workflow_dispatch` starts a run by hand. The job builds and tests without AWS access. **Polling** checks for changes on a timer; a **webhook** sends a message when a change happens, such as after a push. A **required status check** is a passing job GitHub must see before it allows a change into `main`; the approved design is to require `build-test` after its first successful run.
 
-Public-repo logs may be visible to other people. Never print VProfile source files, WAR contents, passwords, or keys in those logs. Hosted CI computers save you from running your own Jenkins server, but they may not be able to reach a private EC2 computer.
+Public-repo logs may be visible to other people. Not uploading an artifact does not hide text printed by `tee`; build output still appears in the workflow log. Never print VProfile source files, WAR contents, passwords, or keys in those logs. Hosted CI computers save you from running your own Jenkins server, but they may not be able to reach a private EC2 computer.
 
 Jenkins is planned for the next phase. Its **controller** organizes jobs; an **agent** computer runs their commands. The instructor's `Jenkinsfile` is not the design source for this project; design the pipeline from the project needs. The course also covers GitLab CI/CD, but the exact lecture order and instructor repo layout were not verified.
+
+**Runner and steps:** A runner is the temporary computer GitHub provides for a job; the hosted runner is removed when the job ends. In this workflow, checkout gets the repository and pinned submodule, setup-java installs Temurin 17, and `run: bash scripts/build.sh` starts the build, so each run repeats the setup.
+
+**Actions, commands, and names:** A step with `uses:` runs a packaged action; this workflow uses checkout and setup-java actions from other repositories, while `run:` executes a shell command. Step names label log sections, but the workflow name feeds `github.workflow` in the concurrency group and the job name identifies the status check, so changing those names can affect cancellation grouping or required-check matching.
+
+**SHA pinning:** A full commit SHA selects one exact version of action code, while a version tag is a name that its owners can move. This workflow pins checkout and setup-java by SHA, so a newer action version is used only after the workflow's SHA is changed.
+
+**Token and permissions:** GitHub gives each workflow run a `GITHUB_TOKEN`, and `permissions` limits what that token can do. `contents: read` allows the workflow to read repository contents without permission to push changes; `persist-credentials: false` tells checkout not to save the token as a Git credential in the repository's local configuration.
+
+**Concurrency groups:** This workflow builds a group from `github.workflow` and `github.ref`. With `cancel-in-progress: true`, a new run cancels an older run only when they share a group and the older run is still running; two runs on `main` share a group, while a pull request uses a different ref.
 
 ## 4. Save and deliver the built app
 
@@ -115,3 +127,7 @@ AWS CLI `describe-*` and `list-*` commands inspect settings without changing the
 Git Bash maps the Windows `G:` drive to `/g`; quote a path that contains spaces, for example `"/g/Tutorial Folder/..."`. `pwd` shows the current folder, and `git rev-parse --show-toplevel` prints the Git repository root; use it to confirm you are in `cicd-pipeline-vprofile`, not the nested `vprofile-src/` repo. A plain folder copy without `.git` is not a Git repo, so Git commands fail there. Clear the command line before pasting; leftover text can join the next command and break it.
 
 A syntax check, a Maven log, a created WAR, and the script's final success message prove different things. For example, `bash -n` checks only syntax, while the Maven log and WAR show that a build ran; keep the evidence and current handoff status in `PROGRESS.md`.
+
+**`git pull --ff-only origin main`:** `origin` is the remote's short name, and `main` is the branch to update. `--ff-only` moves local `main` forward when it is simply behind the remote; if the histories have diverged, Git stops instead of making a merge commit. This is useful after creating a file through GitHub's web UI.
+
+**The Git pager:** Git may show long output one screen at a time; press `q` to leave the pager. `git --no-pager <command>`, such as `git --no-pager diff --stat NOTES.md`, prints the command's output without opening it.
