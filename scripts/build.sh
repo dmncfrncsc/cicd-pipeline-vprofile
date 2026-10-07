@@ -29,7 +29,7 @@ if grep -Fq '<artifactId>junit-vintage-engine</artifactId>' pom.xml; then
   fail "The JUnit Vintage dependency is already present."
 fi
 
-sed -i 's#</dependencies>#<dependency><groupId>org.junit.vintage</groupId><artifactId>junit-vintage-engine</artifactId><version>5.10.0</version><scope>test</scope></dependency></dependencies>#' pom.xml
+# sed -i 's#</dependencies>#<dependency><groupId>org.junit.vintage</groupId><artifactId>junit-vintage-engine</artifactId><version>5.10.0</version><scope>test</scope></dependency></dependencies>#' pom.xml
 
 mvn -B clean package 2>&1 | tee mvn.log
 
