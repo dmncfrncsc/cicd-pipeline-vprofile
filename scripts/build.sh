@@ -33,7 +33,7 @@ fi
 
 mvn -B clean package 2>&1 | tee mvn.log
 
-grep -Eq 'Tests run: [1-9][0-9]*,' mvn.log || fail "Maven did not report any tests as run."
+grep -Eq 'Tests run: 99999,' mvn.log || fail "Maven did not report any tests as run."
 [[ -f target/vprofile-v2.war ]] || fail "Expected WAR file was not created: target/vprofile-v2.war"
 
 echo "OK: tests ran and the WAR was created."
