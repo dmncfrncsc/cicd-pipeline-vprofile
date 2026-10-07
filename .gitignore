@@ -26,3 +26,6 @@ credentials
 *.swo
 .DS_Store
 Thumbs.db
+
+# Temporary build copy and Maven log made by scripts/build.sh
+build-work/
