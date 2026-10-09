@@ -80,7 +80,7 @@ The replacement must put `</dependencies>` back. Without it, the POM is invalid 
 
 The Phase 1 workflow is configured for three events: `pull_request` checks a proposed change, `push` to `main` checks a commit after it is pushed, and `workflow_dispatch` starts a run by hand. The job builds and tests without AWS access. **Polling** checks for changes on a timer; a **webhook** sends a message when a change happens, such as after a push. A **required status check** is a passing job GitHub must see before it allows a change into `main`; the ruleset `protect-main` now requires `build-test` (verified 2026-10-07).
 
-Public-repo logs may be visible to other people. Not uploading an artifact does not hide text printed by `tee`; build output still appears in the workflow log. Never print VProfile source files, WAR contents, passwords, or keys in those logs. Hosted CI computers save you from running your own Jenkins server, but they may not be able to reach a private EC2 computer.
+Public-repo logs may be visible to other people. Not uploading an artifact does not hide text printed by `tee`; build output still appears in the workflow log. Never print VProfile source files, WAR contents, passwords, or keys in those logs. A GitHub-hosted runner cannot directly connect to an EC2 instance in a private subnet; deployment needs an AWS-managed path such as SSM.
 
 Jenkins is planned for the next phase. Its **controller** organizes jobs; an **agent** computer runs their commands. The instructor's `Jenkinsfile` is not the design source for this project; design the pipeline from the project needs. The course also covers GitLab CI/CD, but the exact lecture order and instructor repo layout were not verified.
 
@@ -124,7 +124,19 @@ The WAR must stay private. Do not put it in a public repo, release, or log. The 
 
 An AWS **IAM role** gives a computer limited AWS permissions. For example, a build computer should get only the AWS access it needs. Jenkins credentials can hold tool tokens. Do not commit passwords or keys. The reason for not using Secrets Manager still needs to be recorded.
 
-AWS Systems Manager (SSM) port forwarding can provide private access to a Jenkins screen without opening public SSH. A webhook or load balancer needs a separate network and cost review. A hosted CI computer cannot automatically connect to a private EC2 computer.
+**SSM access:** Systems Manager Session Manager lets a person open a shell or forward a port to an EC2 instance. The SSM Agent starts outbound connections to AWS, so Session Manager does not need inbound SSH and does not give the instance general internet access.
+
+**Private network and updates:** A public subnet has a route to an internet gateway; a private subnet does not route directly to that gateway. A NAT Gateway in the public subnet lets a private instance start outbound connections to SSM and package or plugin sites. If NAT is the only outbound path, deleting it while keeping the instance stops SSM and package access; the instance then needs another SSM path and a separate package source, or the whole stack must be destroyed.
+
+**Package setup:** SSM interface endpoints provide a private path to SSM, but not to arbitrary package sites. An S3 gateway endpoint routes a VPC's traffic to S3 without NAT and has no hourly endpoint charge; it does not reach package sites. A prepared Amazon Machine Image (AMI) can include software before an instance starts, but it must be rebuilt to receive later package and security updates.
+
+**OIDC and access keys:** An AWS access key has an ID and a secret key. A program can use that pair until it is disabled or deleted. With OIDC, each GitHub Actions run presents AWS with a short-lived identity token; AWS checks a rule about the repository and branch, then returns temporary credentials if the token matches. This avoids storing a long-lived AWS access key in GitHub. The linked [AWS guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp-oidc.html) describes repository and branch restrictions; whether AWS can also limit this role to one specific workflow remains unverified.
+
+**Secrets in a public repository:** GitHub secrets are not shown just because a repository is public. Workflow code or an action that can read a secret could still expose it, so a long-lived AWS access key should not be treated as safe just because it is stored as a secret.
+
+**Planned GitHub-to-instance path:** The proposed `main` workflow would upload the WAR to private S3, then use Systems Manager Run Command (AWS's way to send a command to an instance managed by SSM). The private instance would download the WAR using its own limited IAM role; the hosted runner would not open an inbound connection to it. Pull-request runs must have no AWS access. The exact AWS rules, permissions, and network route remain unapproved and unimplemented.
+
+A Jenkins webhook or load balancer is outside the current plan; either needs its own network and cost review before use.
 
 Project 3 owns its own AWS resources and Terraform state. It does not automatically reuse buckets, secrets, networks, or other resources from Projects 1 and 2. A reuse plan needs clear ownership, written approval, and a live check. The resource name or tag alone does not prove which project owns it.
 
