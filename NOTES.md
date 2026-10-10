@@ -84,6 +84,10 @@ Public-repo logs may be visible to other people. Not uploading an artifact does 
 
 Jenkins is planned for the next phase. Its **controller** organizes jobs; an **agent** computer runs their commands. The instructor's `Jenkinsfile` is not the design source for this project; design the pipeline from the project needs. The course also covers GitLab CI/CD, but the exact lecture order and instructor repo layout were not verified.
 
+
+Project 3's infrastructure and playbooks are being designed from project requirements. Course provisioning scripts are not required and will not be inspected or copied; choose the target OS from verified AWS, SSM, and package needs rather than script similarity.
+
+
 **Runner and steps:** A runner is the temporary computer GitHub provides for a job; the hosted runner is removed when the job ends. In this workflow, checkout gets the repository and pinned submodule, setup-java installs Temurin 17, and `run: bash scripts/build.sh` starts the build, so each run repeats the setup.
 
 A **runner image** is the set of software installed on the hosted runner, such as Java and Maven. Its version appears under **Runner Image** in the Set up job log. GitHub updates images over time, so the same workflow can use different software versions on different runs; the separate **Hosted Compute Agent** block describes GitHub's runner service, not the image (verified from PR #2 logs).
@@ -118,6 +122,12 @@ A build number plus the source commit can identify which run made a WAR and whic
 
 The WAR must stay private. Do not put it in a public repo, release, or log. The source-use permission is unresolved, so attribution must stay and public sharing of the built WAR is not allowed unless permission is established.
 
+
+**Private S3 and retention (planned):** Block Public Access blocks public access, while encryption protects stored data but does not decide which role may read or write. The WAR bucket would let the GitHub role upload and the instance role download. Unique object keys and a lifecycle rule could keep prior WARs for rollback; names and retention are undecided.
+
+**Health check (planned):** A health check asks whether the deployed app is ready to serve requests. Its URL and expected response are undecided; Tomcat port `8080` is only a candidate from memory. The check should retry while Tomcat starts, and its result must determine whether deployment succeeded.
+
+
 ## 5. Add AWS resources only after the design and cost gate
 
 **Terraform** is planned to create cloud resources such as networks, computers, and permissions. **Ansible** is planned to install software and set up computers and apps. Terraform **state** is its saved list of resources. S3 versioning and encryption are planned for remote state; the locking choice must match the Terraform version.
@@ -126,15 +136,45 @@ An AWS **IAM role** gives a computer limited AWS permissions. For example, a bui
 
 **SSM access:** Systems Manager Session Manager lets a person open a shell or forward a port to an EC2 instance. The SSM Agent starts outbound connections to AWS, so Session Manager does not need inbound SSH and does not give the instance general internet access.
 
+
+**Port forwarding (planned):** A port is a number that directs a connection to a program, such as Tomcat. SSM port forwarding connects a local port to the instance through the SSM Agent's outbound session, so it needs no inbound connection. `localhost:8080` is an example only; the target port still needs confirmation.
+
+
 **Private network and updates:** A public subnet has a route to an internet gateway; a private subnet does not route directly to that gateway. A NAT Gateway in the public subnet lets a private instance start outbound connections to SSM and package or plugin sites. If NAT is the only outbound path, deleting it while keeping the instance stops SSM and package access; the instance then needs another SSM path and a separate package source, or the whole stack must be destroyed.
 
 **Package setup:** SSM interface endpoints provide a private path to SSM, but not to arbitrary package sites. An S3 gateway endpoint routes a VPC's traffic to S3 without NAT and has no hourly endpoint charge; it does not reach package sites. A prepared Amazon Machine Image (AMI) can include software before an instance starts, but it must be rebuilt to receive later package and security updates.
 
 **OIDC and access keys:** An AWS access key has an ID and a secret key. A program can use that pair until it is disabled or deleted. With OIDC, each GitHub Actions run presents AWS with a short-lived identity token; AWS checks a rule about the repository and branch, then returns temporary credentials if the token matches. This avoids storing a long-lived AWS access key in GitHub. The linked [AWS guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp-oidc.html) describes repository and branch restrictions; whether AWS can also limit this role to one specific workflow remains unverified.
 
+
+**Temporary credentials and logs (planned):** Temporary AWS credentials stop working at expiry, which limits how long a leaked value can be used. They are still sensitive while valid, so never print them in a public workflow log.
+
+**Trust and permissions policies (planned):** An IAM role has a trust policy that says who may use it and a permissions policy that says what it may do. The proposed GitHub role would trust only this repository's `main` branch and upload the WAR or start the limited deployment command; the instance role would read the WAR and support SSM. These separate roles have not been created.
+
+**Instance profile (planned):** An instance profile attaches an IAM role to an EC2 instance. The instance can then receive temporary AWS credentials for actions such as downloading the WAR, instead of storing a long-lived key on disk.
+
+**SSM command document (planned):** An SSM document defines a command that Systems Manager can run on an instance. A fixed deployment document could limit the GitHub role to approved deploy steps; permission to run a general shell document could allow broader commands. This choice is not designed or implemented.
+
+
 **Secrets in a public repository:** GitHub secrets are not shown just because a repository is public. Workflow code or an action that can read a secret could still expose it, so a long-lived AWS access key should not be treated as safe just because it is stored as a secret.
 
 **Planned GitHub-to-instance path:** The proposed `main` workflow would upload the WAR to private S3, then use Systems Manager Run Command (AWS's way to send a command to an instance managed by SSM). The private instance would download the WAR using its own limited IAM role; the hosted runner would not open an inbound connection to it. Pull-request runs must have no AWS access. The exact AWS rules, permissions, and network route remain unapproved and unimplemented.
+
+
+**Terraform state, backend, and locking (planned):** State is Terraform's record of the resources it manages. A backend stores that record, and a lock prevents overlapping changes from using the same state at once. Remote S3 state and a compatible lock are proposed; the Terraform version and lock method are unverified.
+
+**Terraform and Ansible (planned):** Terraform creates the network, permissions, and EC2 instance. Ansible configures software on a computer that already exists; it does not replace Terraform's infrastructure work.
+
+**Ansible playbook and idempotence (planned):** A playbook lists the computer setup tasks, such as installing MySQL and starting its service. Idempotence means rerunning the playbook leaves an already-correct computer unchanged, which supports rebuilding this lab reliably.
+
+**Ansible over SSM (planned; transfer details unverified):** The `aws_ssm` connection would send Ansible's commands through Systems Manager instead of inbound SSH. The collection may use an S3 transfer bucket for helper files; its exact behavior and required permissions need documentation review before the design gate.
+
+**Local AWS identity (reported setup; identity unknown):** A `[default]` profile is only a profile name; it can refer to long-lived or temporary credentials. `aws sts get-caller-identity` contacts AWS and tells which identity is calling, but it does not show what that identity is allowed to do.
+
+**AMI and operating system (planned):** An AMI is the disk image an EC2 instance starts from and includes one operating system. The Ubuntu computer running Ansible can manage a different target OS; the playbook must use the target OS's package and service details.
+
+**VProfile service names (reported from pasted configuration):** The app expects `db01` for MySQL, `mc01` for Memcached, and `rmq01` for RabbitMQ. Its standby Memcached address is `127.0.0.2`; how the app uses it still needs a read-only check. The configuration contains fixed service credentials, and their values do not belong in these notes.
+
 
 A Jenkins webhook or load balancer is outside the current plan; either needs its own network and cost review before use.
 
@@ -145,6 +185,10 @@ Project 3 owns its own AWS resources and Terraform state. It does not automatica
 Stopping an EC2 computer stops its compute use, but storage and other resources can still cost money. A VPC is an AWS private network; the VPC itself has no hourly charge, while some resources in it can. An Application Load Balancer has its own billing line. Interface VPC endpoints can charge by the hour even when idle; S3 gateway endpoints have no endpoint-hour charge. Check current prices before making a cost decision.
 
 Bills can update late. Cleaning up stops later use but does not remove earlier charges. A bill can show a charge and a separate credit that subtracts from it, so a zero total does not mean there was no usage. Cost Explorer can group charges by usage type. A service line alone may not prove which resource caused it.
+
+
+**Hourly costs and teardown (planned):** Stopping an instance stops its compute charge, but its EBS disk can keep billing until deleted; NAT Gateways, public IPv4 addresses, and SSM interface endpoints can also keep hourly charges while they exist. Way 1 proposes destroying the stack after each session and rebuilding it, which gives a fresh database next time. The separate state and WAR buckets may remain and incur storage charges, so check Terraform state and live AWS resources after destroy.
+
 
 Earlier checks found that an empty `aws s3api get-bucket-versioning` response meant versioning was not enabled for that bucket. `aws secretsmanager list-secrets --include-planned-deletion` also shows secrets waiting to be deleted; active secrets are billed monthly. Ansible's SSM connection can put temporary files such as `AnsiballZ_ping.py` in S3 while it works. These facts do not identify which project owns a bucket or secret.
 
@@ -169,3 +213,13 @@ A syntax check, a Maven log, a created WAR, and the script's final success messa
 **Surefire and test engines:** Surefire is the Maven plugin that runs tests. JUnit 4 and JUnit 5 are different test systems, and the Vintage engine lets JUnit 5 run JUnit 4 tests. The linked [Surefire 3.6.0 guide](https://maven.apache.org/surefire-archives/surefire-LATEST/maven-surefire-plugin/whats-new-3-6-0.html) is reported to say the plugin automatically adds Vintage for JUnit 4; that guide was not independently reviewed in this session. The PR #2 run comparison is consistent with this report, but does not prove which engine loaded in either run. `mvn dependency:tree -Dincludes=org.junit.vintage` showed no Vintage engine in the project's dependencies, but that does not show what Surefire adds on its own.
 
 **Commands used:** `git show <commit> -- <file>` shows what one commit changed in one file. `git fetch --prune` removes local pointers to branches deleted on GitHub (it printed `[deleted] ... origin/test/failure-path`). `git branch -d` deletes a branch only if it is merged, and `-D` forces it. `git switch -c <name>` creates and enters a new branch. `git status -sb` prints a one-line branch summary. `cut -c1-100` trims long lines so output stays readable.
+
+
+**Login shell and `PATH` (verified):** A command can be installed but not found if its folder is missing from the current shell's `PATH`. Ansible was found in WSL Ubuntu's login shell; a `command not found` result from a non-login shell did not prove it was uninstalled.
+
+**Current folder and relative paths (verified):** A relative path such as `vprofile-src/...` starts from the current folder. It can fail from the Ubuntu home folder even when the file exists in the repository, so check the working folder before using a relative path.
+
+**Reading AWS settings safely (verified):** The AWS setup check showed section and setting names only, not credential values. Read only the names needed to understand the profile; displaying credential files can expose secrets.
+
+**WSL distributions (verified):** `wsl --list --verbose` showed Ubuntu and `docker-desktop`; use the Ubuntu distribution for the project tools. Git Bash and WSL keep separate installations and AWS settings.
+
