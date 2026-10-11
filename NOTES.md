@@ -118,7 +118,7 @@ The WAR is the file made by the build. **Nexus** stores versioned build files; i
 
 A build number plus the source commit can identify which run made a WAR and which app version it used. A health check can see whether the deployed app responds. A rollback can return to an earlier version if the new one fails. These are planned behaviors, not completed or tested features.
 
-The WAR must stay private. Do not put it in a public repo, release, or log. The source-use permission is unresolved, so attribution must stay and public sharing of the built WAR is not allowed unless permission is established. Under the current project instructions, uploading it anywhere, including private S3, also waits for that permission.
+The WAR must stay private. Do not put it in a public repo, release, or log. The source-use permission is unresolved, so attribution must stay and public sharing of the built WAR is not allowed unless permission is established. Under the current project instructions, a private-only copy (for example, in private S3) is an accepted risk, not permission, and still needs the design, cost, and implementation approvals.
 
 **Private S3 and retention (planned):** Block Public Access blocks public access, while encryption protects stored data but does not decide which role may read or write. The WAR bucket would let the GitHub role upload and the instance role download. Versioning keeps an older copy when an object key is overwritten; a lifecycle rule removes objects by age or other rules. Unique keys and retention can keep earlier WARs for rollback; bucket names are undecided; a 30-day expiry is proposed.
 
