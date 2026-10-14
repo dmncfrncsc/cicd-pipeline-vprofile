@@ -212,6 +212,18 @@ Project 3 owns its own AWS resources and Terraform state. It does not automatica
 
 **Project 3 S3 names (planned):** Use `p3-vprofile-war-xxxxxx`, `p3-vprofile-tfstate-xxxxxx`, and `p3-vprofile-ansible-xxxxxx`, replacing `xxxxxx` with six random lowercase letters or digits; never include the AWS account number. These are patterns only, and global name availability is unchecked; keep the buckets until project close, then save evidence, get separate deletion approval, and delete the state bucket last.
 
+### Identity setup and least-privilege checks (2026-10-14)
+
+**Organization and Identity Center instance:** An AWS Organization groups accounts under a management account. An IAM Identity Center organization instance is attached to that Organization and can provide permission sets across its accounts; an account instance is scoped to one account and does not create an Organization. This project used the organization instance in `us-east-1` with a single-Region setup; the primary Region is reported as fixed after enablement. These details come from GPT research and console screenshots; live AWS settings were not rechecked.
+
+**Human user, permission set, and assignment:** An Identity Center user is a person’s sign-in identity. A permission set is a named collection of AWS permissions, and an assignment connects that set to a user for an AWS account. This is different from an IAM user with an access key, and both are different from a service role used by GitHub Actions or an EC2 instance.
+
+**CLI profile and temporary role credentials:** `aws configure sso` created the named `p3-readonly` profile and `p3` SSO session in Ubuntu WSL. The profile records sign-in and role settings; it is not a permanent access key. The `get-caller-identity` result contained `assumed-role`, which showed that the CLI used temporary role credentials; credential expiry was not observed. In this setup WSL could not open a browser, so sign-in approval happened in a Windows browser and returned to the waiting CLI through a local callback.
+
+**IAM action resource scope (reported by GPT and reviewed; not independently rechecked):** Object actions such as `s3:GetObject` use an object ARN with a bucket and key path, while `s3:ListBucket` and `s3:GetBucketLocation` use a bucket ARN; `s3:prefix` can narrow a list request. `ssm:SendCommand` needs the command document and target instance, but `ssm:GetCommandInvocation` needs `Resource: "*"`; AWS examples for `ssmmessages:OpenDataChannel` differed, so the project keeps `"*"` provisionally and tests it on an instance. The available record does not list the complete condition-key set, and the Ansible plugin’s exact action requirements remain unconfirmed; check both against the actual policies and plugin before implementation.
+
+**Existing IAM access and cleanup:** The reported AWS guidance says enabling Identity Center does not change existing IAM users, but the status of the old access key was not checked. Removing an Identity Center instance deletes its settings and assignments; deleting an Organization has a separate requirement to remove its member accounts first. The recommended order was not confirmed, so cleanup needs its own reviewed plan and approval.
+
 ## 6. Check AWS costs and live resources carefully
 
 Stopping an EC2 computer stops its compute use, but storage and other resources can still cost money. A VPC is an AWS private network; the VPC itself has no hourly charge, while some resources in it can. An Application Load Balancer has its own billing line. Interface VPC endpoints can charge by the hour even when idle; S3 gateway endpoints have no endpoint-hour charge. Check current prices before making a cost decision.
