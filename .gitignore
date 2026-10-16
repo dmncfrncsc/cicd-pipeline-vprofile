@@ -29,3 +29,7 @@ Thumbs.db
 
 # Temporary build copy and Maven log made by scripts/build.sh
 build-work/
+
+# Terraform saved plans
+*.tfplan
+tfplan
