@@ -1,10 +1,9 @@
 provider "aws" {
   region  = "us-east-1"
-  profile = "p3-terraform"
 }
 
 resource "aws_s3_bucket" "state" {
-  bucket = "p3-vprofile-tfstate-x4b8t3"
+  bucket = "p3-vprofile-tfstate-r5w8n2"
 
   tags = {
     Project = "p3"
