@@ -8,7 +8,7 @@ Project 3 of an AWS DevOps portfolio: build and test the instructor-provided VPr
 
 **Recorded evidence from terminal output (2026-10-21; not freshly rechecked):** New-account IAM access and a Terraform S3 state-bucket bootstrap were reported in place. The bootstrap state was migrated to S3, and a later plan reported no changes. This is setup state only: no application infrastructure, WAR or Ansible bucket, or deployment had been recorded as created or verified in the new account by that date. See `PROGRESS.md` for the evidence limits.
 
-**Not done:** Jenkins, application deployment, health checks, and rollback testing. Jenkins is required before project completion, but the setup option is still open. No new-account application deployment design, cost gate, or implementation approval has been completed.
+**Not done:** Jenkins, application deployment, health checks, and rollback testing. Jenkins is required before project completion, but the setup option is still open. The new-account cost gate was accepted on 2026-10-22 using existing planning estimates; regional-rate, credit, budget, and technical limits remain open, and implementation is not approved. See [PROGRESS.md](PROGRESS.md) and the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
 ## Scope and next phases
 

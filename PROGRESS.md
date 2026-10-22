@@ -1,62 +1,66 @@
 # Project 3 session handoff
 
-**Updated 2026-10-22.** This is the current operational handoff, based on local repository evidence and author-supplied terminal output and console screenshots. AWS and GitHub service state has not been freshly checked; the identity and policy evidence is historical and reported.
+**Updated 2026-10-22.** Concise handoff based on local repository files and dated author-supplied evidence. Live service state may have changed since the recorded checks. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for chronology and evidence.
 
-## Project and current phase
+## Objective and current phase
 
-Project 3 builds and tests the instructor-provided VProfile application, then adds a CI/CD path to an approved AWS target. VProfile is not authored by this repository's owner; source-use permission remains unresolved.
+Project 3 builds and tests the instructor-provided VProfile application, then adds a CI/CD path to an approved AWS target. The repository owner did not author VProfile, and source-use permission remains unresolved.
 
-**Phase 1 — GitHub Actions build/test: complete in recorded CI evidence.** The workflow has recorded successful `pull_request`, `push` to `main`, and `workflow_dispatch` runs. It has no AWS access and keeps the WAR on the runner. The evidence is historical; this audit did not query GitHub or rerun CI. See [historical milestones](PROGRESS-HISTORY.md), [NOTES.md](NOTES.md), and the [workflow](.github/workflows/build-test.yml).
+**Active phase: new-account durable IAM design review (planning).** On 2026-10-22, the author accepted the cost gate using the existing planning estimates; regional-rate, credit, budget, and technical limits remain open. Implementation is not approved. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
-**Most recent recorded infrastructure milestone:** On 2026-10-21, the new-account six-resource state-bucket bootstrap was applied, read back, and migrated to S3. A subsequent plan reportedly refreshed all six resources and returned `No changes`. The current local backend configuration names `p3-vprofile-tfstate-r5w8n2`, key `bootstrap/terraform.tfstate`, region `us-east-1`, SSE enabled, and `use_lockfile = true`. Those AWS results are recorded terminal evidence, not a fresh live check in this review. The implementation commit is in local merge commit `5f2238f` (PR #49).
+## Current state
 
-The earlier account's bootstrap state and D1 buckets were also implemented according to dated records, but that account is paused. No application stack, new-account WAR bucket, Ansible transfer bucket, deployment, health check, or rollback has been recorded as created or verified in the new account. Jenkins is required before project completion; its setup option remains undecided.
+- **Phase 1, GitHub Actions build/test (reported complete):** recorded successful `pull_request`, `push` to `main`, and `workflow_dispatch` runs. The workflow has no AWS access and keeps the WAR on the runner. No later CI run or ruleset check is recorded. See the [workflow](.github/workflows/build-test.yml), [NOTES.md](NOTES.md), and [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
+- **New-account bootstrap (reported, 2026-10-21):** the six-resource state-bucket bootstrap was applied and migrated to S3; a later plan reported `No changes`. These are dated terminal results, not a live check. See the [bootstrap backend decision](docs/decisions/terraform-bootstrap-s3-backend.md) for backend settings and the state-metadata question.
+- **Not recorded in the new account:** application stack, WAR bucket, Ansible transfer bucket, deployment, health check, or rollback.
+- **Prior account:** paused; its bootstrap state and D1 buckets are recorded as implemented. Cleanup and the support case remain unresolved.
+- **Instruction files:** The author confirmed on 2026-10-22 that Master Prompt v4.9 and Project Instructions v3.9 are the official Project 3 guidance. Their local files now identify them as adopted; the earlier screenshot showed their placement. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
 
-## Completed work and evidence limits
+## Pending approvals and decisions
 
-- The public repository contains the author's pipeline, infrastructure, and documentation; VProfile is pinned as submodule `vprofile-src`. The recorded source pin is `9f22748`; its continued reachability is uncertain. No public WAR distribution is allowed while source-use permission is unresolved.
-- At the time of the 2026-10-21 documentation audit, the local instruction pair was Master Prompt v4.7 and Project 3 Instructions v3.7. The audit treated v4.8/v3.8 as proposals and prepared a coordinated v4.9/v3.9 proposal pair. No version was confirmed as active in the project settings at that time.
-- CI build/test evidence covers all three triggers and the `protect-main` required check. Detailed run limits and the PR #2 failure-path experiment are preserved in [NOTES.md](NOTES.md) and [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
-- New-account Terraform sign-in, state-bucket settings, migration, and post-migration plan are recorded from terminal output dated 2026-10-21. The state migration changed `serial` and `lineage`; normalizing those fields reportedly made the remaining content match the preserved backup. A reported local SHA-256/metadata comparison of `infra/bootstrap/terraform.tfstate.backup` and a separate outside-repository copy found them byte-identical (9,174 bytes, serial 7, same lineage). The exact command and second copy's path were not retained. The comparison did not include live S3. The cause of the remote metadata change remains unknown. Do not replace state by hand, reuse the applied plan, or run `terraform destroy` as a diagnostic.
-- Author-supplied terminal output records a successful `p3-new` assumed-role identity check in WSL. Before any role session was loaded, plain `aws sts get-caller-identity` returned the IAM user in the `default` profile in both Git Bash and WSL. Git Bash had only a `default` profile, so use WSL for Terraform. The author reported that `default` and `p3-readonly` map to the old account and `p3-new` to the new account; the `p3-readonly` SSO token was expired. After exported credentials were cleared, three IAM reads returned `NoSuchEntity`; no caller-identity output was captured after cleanup. This is consistent with a default identity in another account, but does not prove it. Only the 2026-10-21 record verified fallback after `unset`.
-- Author-supplied console screenshots and saved-policy text report one customer inline `p3-state-bucket` policy, no managed policies, and no permissions boundary. The policy text is scoped to the state bucket, allows bucket-policy deletion, denies bucket deletion, and omits several version/tag actions. These are historical reports, not a fresh effective-permissions check. On 2026-10-22 the author explicitly accepted, as a temporary risk to revisit in the D2 IAM review, that the role can weaken or remove the HTTPS-only bucket policy; this is a risk acceptance, not a fix or a verified control. IAM actions and organization-level controls were not tested. See the [bootstrap backend decision record](docs/decisions/terraform-bootstrap-s3-backend.md) and [NOTES.md](NOTES.md).
-- Account plan and credits were reported before the final IAM/bootstrap work; charge eligibility is unknown. No monthly budget was created. Prior-account credit/support history and all pricing assumptions are historical, not current quotes.
-- **Credit and account-wide safeguard (author-directed):** In the prior account, creating an AWS Organization was followed by credit expiry, and AWS Support's first reply (identified as AI-generated) linked the events; causation is not established, and the effect of any Organization action on this account's credits is unknown. As a precaution, do not create or join an Organization, and do not open or use the Organizations console even to inspect organization-level controls. Avoid account-wide actions that could expire credits; stop and ask before changing any account-wide setting. Known actions to avoid include Organization or Control Tower setup, Identity Center changes, account-plan changes or closure, Partner Network membership, Professional Services contracts, Enterprise Agreements, Skill Builder Team subscriptions, and HIPAA/SEC designations; this list is not exhaustive. Do not distribute a WAR publicly; a private artifact copy remains subject to separate design, cost, and implementation approval.
+| Item | Status |
+| --- | --- |
+| Cost gate | Accepted on existing planning estimates (2026-10-22); accepted session-duration basis is unconfirmed, and other limits remain open in PROGRESS-HISTORY.md |
+| Implementation, spending, and AWS changes | Not approved |
+| Root console session | Not approved; root is reported as the only existing admin path and is planned to create the boundaries and attach the reviewed durable policy under option B |
+| Boundary ownership | Option B chosen (2026-10-22): `p3-terraform` will not create or edit the boundaries; a separately approved root session is planned. Planning only |
+| Git staging, commit, push, and merge | The author handles these after Codex reviews all unstaged and untracked documentation files in this milestone, confirms it is complete, and finds the diff clean; exclude unrelated changes |
+| Jenkins J1 vs. J2 | Undecided; Jenkins is required before project completion |
+| HTTPS-only bucket-policy exposure | Bootstrap state-bucket risk temporarily accepted; acceptance for the two durable buckets is not recorded and remains undecided |
 
-## Recorded scope, sequence, and approvals
+## Open risks and gaps
 
-The recorded deployment sequence is: complete a new-account AWS design and cost review, then add GitHub Actions deployment to the approved target; Jenkins is a later required phase intended to run the same flow against that target. This sequence does not approve deployment, spending, or resource creation. Prior-account Phase D design approvals do not automatically apply to the new account. No new-account application design, cost gate, or implementation gate is complete.
+- **State metadata (2026-10-22):** live S3 showed serial 1 and a different lineage from the preserved backup (serial 7). Contents were not compared; the cause is unknown.
+- **Bootstrap IAM and S3 settings:** `s3:PutBucketPublicAccessBlock` on the bootstrap role is a separate, unaccepted issue. Account-level S3 settings are unchecked; do not rely on them as a backstop.
+- **New-account IAM package:** the original final 14-statement JSON was not recovered. The review-only package preserves the 15-statement reconstruction and earlier boundary drafts, plus a separate 14-statement option-B reconstruction made by removing only `ManageTwoBoundaryPolicies`; none is active or applied. The `iam:PutRolePolicy`/`iam:UpdateAssumeRolePolicy` scope and an explicit-deny alternative for boundary-policy edits remain undecided and unaccepted; effective permissions are unverified. The deploy-role and instance-role permission policies and both trust policies are not yet drafted; the deploy role's GitHub trust must exclude pull-request workflows. Broad SSM document/session scopes, instance-boundary Parameter Store reads, encryption mode, the `p3-terraform` trust/MFA condition, the ephemeral policy/state key, and whether to retain `s3:PutBucketPolicy` on the two durable buckets remain open. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
+- **Costs and credits:** the cost gate was accepted on dated estimates, not a quote. Its accepted session-duration basis is unconfirmed: the design record labels 8 hours as an assumption, while the history comparison shows illustrative 48-hour and 730-hour cases. Regional pricing and workload limits remain open; charges and this account’s credit eligibility are unknown, and no monthly budget exists. Prior-account credits expired after an Organization was created. Do not infer that this account has the same eligibility or credit outcome.
 
-Keep Phase 1 pull-request workflows build/test only with no AWS access. Do not derive the pipeline from the instructor's `Jenkinsfile` without a focused need and approval. Do not reuse Project 1 or 2 infrastructure, state, buckets, secrets, or networks without an approved design and verified ownership. Never put credentials, AWS account IDs, VProfile source contents, or a WAR in this public repository or public workflow logs.
+## Safety boundaries
 
-## Open issues and safety boundaries
+- **Terraform identity:** use WSL. Author-supplied terminal output dated 2026-10-22 records `p3-new` assuming `p3-terraform`; before every Terraform command, run `aws sts get-caller-identity` in that same shell and confirm `assumed-role/p3-terraform`. `default` and `p3-readonly` are reported to target the prior account. Before reusing the shell, clear exported credentials with `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CREDENTIAL_EXPIRATION`. See the MFA procedure in [NOTES.md](NOTES.md).
+- **State:** keep backups outside Git. Do not replace, restore, or destroy state to diagnose the metadata difference.
+- **Account-wide actions:** do not open or use the AWS Organizations console, create or join an Organization, or set up Control Tower. Pause before any other account-wide action. See the [credit safeguard](docs/decisions/terraform-bootstrap-s3-backend.md#account-wide-actions-and-credit-safeguard).
+- **Public repository and project scope:** keep Phase 1 pull-request workflows build/test only, with no AWS access. Never put credentials, AWS account IDs, VProfile source contents, or a WAR in this public repository or its workflow logs. Do not derive the pipeline from the instructor’s `Jenkinsfile` without a focused need and approval, or reuse Project 1 or 2 resources without an approved design and verified ownership.
+- Documentation updates do not authorize AWS changes, spending, deployment, implementation, or unrelated Git operations. The author handles staging, commit, push, and merge for this milestone after Codex confirms the documentation review is complete and the diff is clean; exclude unrelated changes.
 
-- Resolve the unexplained `serial`/`lineage` change for both account migrations before any state replacement, restore, or destructive action. Keep the local and separate backups outside Git.
-- Before any Terraform command, verify `aws sts get-caller-identity` in the same WSL shell and stop unless it identifies the intended new-account `assumed-role/p3-terraform` session. The 2026-10-22 terminal evidence showed `p3-new` could assume that role. Git Bash had only a `default` profile; the author reported that `default` and `p3-readonly` target the old account, and the `p3-readonly` token was expired. Do not use those profiles for Project 3. No caller-identity output was captured after exported credentials were cleared; three IAM reads returned `NoSuchEntity`, which is consistent with but does not prove a fallback identity in another account. Only the 2026-10-21 record verified fallback after `unset`.
-- The author-supplied saved `p3-state-bucket` policy and console screenshots report no managed policies and no permissions boundary, but do not establish full effective permissions. The assumed role's attempts to read its own IAM attachments and role details returned `AccessDenied`; the saved-policy text is the available policy evidence. `s3:UntagResource`, `s3:ListBucketVersions`, `s3:GetObjectVersion`, and `s3:DeleteObjectVersion` are absent from that text; bucket-policy deletion and the explicit bucket-deletion deny were not exercised, nor was a real HTTP-denial request. Organization-level controls were not checked because the author directed that the Organizations console not be opened.
-- The HTTPS-only bucket-policy exposure is an accepted temporary risk as of 2026-10-22; revisit it in the D2 IAM review, or sooner if the role is used beyond the state bucket or a second person gets access.
-- New-account D2/D3 scope, IAM/OIDC design, WAR and Ansible bucket design, S3 logging, root-volume encryption, instance sizing, Ansible execution, health behavior, rollback, and credit applicability remain open or unverified. Recheck N. Virginia prices at the cost gate.
-- The old account's support case and resource cleanup remain unresolved. Do not infer that a historical inventory proves current live resources or charges.
-- Documentation maintenance does not authorize implementation, AWS mutations, spending, deployment, Git state changes, or external settings changes. Apply the separate approvals in the active instructions.
+## Planned sequence
 
-## Next safe action
+The cost gate is accepted. Complete the durable and ephemeral IAM/design review, then seek separate implementation approval; deployment may proceed only after that approval. Jenkins follows as a required later phase. Prior-account Phase D approvals do not carry over.
 
-The live state metadata comparison remains unresolved. If you choose to resume it, explicitly authorize a read-only AWS check, verify caller identity in the same shell, then compare the live new-account S3 state's `serial` and `lineage` with the preserved pre-migration backup without displaying state contents. The local backup copies already matched each other; that does not resolve the live-state metadata change. Stop if the account or role is unexpected or the comparison is ambiguous. After resolving or explicitly deferring this question, prepare a new-account design and cost gate for the next infrastructure phase; do not treat the old-account D2/D3 plan as approval.
+## Next safe step
 
-**Prerequisites:** a valid MFA-backed new-account role session, backups retained outside the repository, and permission for any AWS reads required by the active instructions. Do not apply, destroy, migrate, or replace state as part of this handoff step.
+Codex reviewed all unstaged and untracked documentation files in this milestone against the supplied conversation on 2026-10-22 and confirmed the documentation diff is clean after this handoff wording update. The author should stage, commit, and push only these documentation updates on a documentation branch, then merge through its pull request; leave unrelated changes out. After that Git step, resume the remaining option-B IAM scope review: decide whether `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` should remain, and whether to add an explicit deny for boundary-policy edits. Keep the package review-only; the broad SSM document scope and other design gaps remain open in the [new-account design decision](docs/decisions/new-account-deployment-design.md). No root session or AWS changes are approved.
 
-## Related references and future interview guide
+**Session-start precondition:** before beginning work, inspect the current documentation changes and applicable decision records against the provided source material and instruction set. Update a decision record if that review shows a material decision or status needs it.
 
-- [Historical milestones and dated evidence](PROGRESS-HISTORY.md)
-- [Technical learning reference](NOTES.md)
-- [Repository overview](README.md).
-- [Decision records](docs/decisions/), including the consolidated [bootstrap backend decision record](docs/decisions/terraform-bootstrap-s3-backend.md).
+## References
 
-Defer the interview guide until the implementation is sufficiently complete and verified. Keep factual explanations in NOTES and decision records in the meantime; a later guide should separate tutorial-provided, pre-existing, generated, and AI-assisted work from the author's verified contributions and use only evidence-backed results.
+- [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md): milestones and dated evidence
+- [NOTES.md](NOTES.md): technical learning reference
+- [README.md](README.md): repository overview
+- [Decision records](docs/decisions/): [bootstrap backend](docs/decisions/terraform-bootstrap-s3-backend.md) and [new-account design](docs/decisions/new-account-deployment-design.md)
 
-## Repository checkpoint recorded during the documentation audit
-
-Read-only checks during the 2026-10-21 documentation audit found branch `main` at `5f2238f` (`Merge pull request #49 ...`); the locally stored `origin/main` ref pointed to the same commit. At the start of that audit, `git status --short --branch --ignore-submodules=all` showed a pre-existing unstaged `PROGRESS.md` edit and five untracked review copies, with no staged changes. The ordinary status command failed because Git could not access `.git/modules/vprofile-src`; full submodule status and remote parity could not be verified. No AWS or GitHub service checks were made. This is the audit's starting checkpoint, not the current working-tree status.
+Defer the interview guide until implementation is sufficiently complete and verified. A later guide should separate tutorial-provided, pre-existing, generated, and AI-assisted work from verified author contributions.
 
 ## Definition of Done
 
@@ -65,7 +69,7 @@ Read-only checks during the 2026-10-21 documentation audit found branch `main` a
 - [ ] The same build and deployment flow runs from GitHub Actions and Jenkins, each with recorded verification.
 - [x] No public WAR artifact, release, or workflow-log distribution is recorded; continue enforcing this constraint.
 - [ ] Quality checks are justified, with outcomes and limits recorded.
-- [x] Source-use permission is established, or the accepted-risk stance is documented; the WAR is never distributed publicly. Permission itself remains unresolved.
+- [x] Source-use risk stance is documented and the WAR is never distributed publicly. Permission itself remains unresolved.
 - [ ] A versioned artifact is retrievable from the approved private store, only after the required design, cost, and implementation approvals.
 - [ ] Deployment to the approved target and health behavior are verified.
 - [ ] Failure and rollback behavior is tested or meaningfully demonstrated; the forced CI error path turned CI red, but the original zero-test assertion and rollback behavior remain unverified.
