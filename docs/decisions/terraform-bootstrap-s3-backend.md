@@ -1,8 +1,8 @@
 # Decision: Store Project 3 bootstrap state in its S3 state bucket
 
-**Canonical decision record updated 2026-10-22.** This record combines the historical prior-account migration evidence with the new-account backend decision. AWS resource state and role details are documented from recorded terminal output and author-supplied policy text and console screenshots; they have not been freshly checked.
+**Canonical decision record updated 2026-10-22.** This record combines the historical prior-account migration evidence with the new-account backend decision. AWS resource and role details are summarized from recorded terminal output and author-supplied policy text and console screenshots; they are not current live checks.
 
-**Status:** Chosen and migrated in the new account according to recorded 2026-10-21 terminal evidence. State metadata changed unexpectedly. Author-supplied evidence includes a review of the saved role policy, but effective permissions and live state metadata have not been fully verified. This status is not a fresh live AWS check. The role's ability to remove the HTTPS-only bucket policy was explicitly accepted by the author on 2026-10-22 as a temporary risk (see "HTTPS-only bucket policy: accepted temporary risk" below).
+**Status:** Chosen and migrated in the new account according to recorded 2026-10-21 terminal evidence. An author-supplied read-only comparison dated 2026-10-22 confirmed that live S3 metadata differs from the preserved backup; it did not compare state contents or explain the cause. The role's effective permissions remain unverified. Its ability to remove the HTTPS-only bucket policy was explicitly accepted by the author on 2026-10-22 as a temporary risk (see "HTTPS-only bucket policy: accepted temporary risk" below).
 
 ## Problem and constraints
 
@@ -36,6 +36,7 @@ Versioning can help recover an earlier object version, but the lifecycle rule re
 - After migration, S3 contained the state object and no lock object remained after unlock. A normal plan refreshed all six resources and reported `No changes`. After normalizing only `serial` and `lineage`, the local and S3 state fingerprints matched. The S3 state serial became 1 and its lineage changed; the cause is not known.
 - Keep the local backup and the separate outside-repository backup. The local state file is now empty. Do not push backups, replace active state by hand, reuse the applied plan, or run `terraform destroy` as a diagnostic.
 - A reported local SHA-256/metadata comparison reviewed on 2026-10-22 compared `infra/bootstrap/terraform.tfstate.backup` with a separate outside-repository backup and found the copies byte-for-byte identical, each 9,174 bytes with serial 7 and the same lineage. The exact command and second copy's path were not retained; state contents were not printed. This checks backup-to-backup consistency only; it does not compare either copy with live S3 or explain the changed remote metadata.
+- A later author-supplied WSL check on 2026-10-22 found live S3 serial 1 and a different lineage from the preserved repository backup (serial 7). It printed only metadata, did not compare state contents, and did not identify why the metadata changed. See [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md) for the recorded values.
 
 ### Prior account — 2026-10-17 (historical; not the current backend)
 
@@ -48,6 +49,8 @@ Versioning can help recover an earlier object version, but the lifecycle rule re
 ### Permission and verification limits
 
 Author-supplied console screenshots and saved-policy text report one customer inline policy, `p3-state-bucket`, no managed policies, and (by author report) no permissions boundary. The screenshot showed only part of the policy. The text is scoped to the state bucket, allows `s3:PutBucketPolicy` and `s3:DeleteBucketPolicy`, and explicitly denies `s3:DeleteBucket`. It does not include `s3:UntagResource`, `s3:ListBucketVersions`, `s3:GetObjectVersion`, or `s3:DeleteObjectVersion`. These are reported findings, not an independent live AWS read.
+
+**Separate public-access-block permission is unresolved.** The supplied `p3-state-bucket` policy text includes `s3:PutBucketPublicAccessBlock`, and the current local bootstrap configuration declares `aws_s3_bucket_public_access_block.state` in [`infra/bootstrap/main.tf`](../../infra/bootstrap/main.tf). The 2026-10-22 risk acceptance covers only the HTTPS-only bucket-policy exposure; no separate acceptance was recorded for the role changing the public-access block. The account-level S3 settings were not checked. The later planning decision to omit this permission for the two durable application buckets does not apply to the bootstrap state bucket.
 
 Allowing `s3:DeleteBucketPolicy` lets the role remove the HTTPS-only bucket policy as well as manage it; on 2026-10-22 the author explicitly accepted that exposure as a temporary risk (see the next subsection). Policy deletion, the explicit bucket-deletion deny, version listing or restore access, and a real HTTP-denial request were not tested. Organization-level controls were not checked because the author directed that the Organizations console not be opened. The role's full effective permissions therefore remain unverified, and the successful migration and plan are not an API-by-API IAM trace. No apply, restore, or rollback test was performed after the new-account S3 migration.
 
