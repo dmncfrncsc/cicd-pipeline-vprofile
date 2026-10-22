@@ -52,7 +52,6 @@ The cost gate is accepted. Complete the durable and ephemeral IAM/design review,
 
 When the IAM review resumes, draft the deploy role's GitHub OIDC trust policy for review, with pull-request workflows excluded. Then draft both project-role permission policies and both trust policies, and narrow the broad SSM document and instance-boundary Parameter Store scopes before implementation. Revisit the `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` decision only after that review; no option has been accepted. Keep the package review-only. No root session, AWS check or change, implementation, or spending is approved. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
-**Session-start precondition:** before beginning work, inspect the current documentation changes and applicable decision records against the provided source material and instruction set. Update a decision record if that review shows a material decision or status needs it.
 
 ## References
 
