@@ -1,26 +1,30 @@
 # cicd-pipeline-vprofile
 
-A learning project (Project 3 of 5 in an AWS DevOps portfolio): design and build a CI/CD pipeline that builds the VProfile reference application and delivers it to a Terraform-managed AWS target.
+Project 3 of an AWS DevOps portfolio: build and test the instructor-provided VProfile application, then develop an approved CI/CD path around it. VProfile is a course reference application, not software authored by this repository's owner.
 
 ## Status
 
-Phase 1 (GitHub Actions, build and test only) is working. The `Build and test` workflow runs on `pull_request`, `push` to `main`, and `workflow_dispatch`. It builds the pinned VProfile source with Maven through `scripts/build.sh`, which is designed to fail unless Maven reports at least one test run. It has no AWS access. `main` is protected by a ruleset that requires the `build-test` check.
+**Recorded CI/configuration evidence (through 2026-10-07; not freshly rechecked):** Phase 1 GitHub Actions build/test has successful recorded runs for pull requests, pushes to `main`, and manual dispatch. The workflow uses the pinned `vprofile-src` submodule and `scripts/build.sh`; pull-request runs have no AWS credentials and cannot deploy. The `protect-main` ruleset was recorded as requiring the `build-test` check.
 
-Not done: Jenkins, AWS infrastructure and deployment, and rollback testing. This README is updated only as work is built and verified.
+**Recorded evidence from terminal output (2026-10-21; not freshly rechecked):** New-account IAM access and a Terraform S3 state-bucket bootstrap were reported in place. The bootstrap state was migrated to S3, and a later plan reported no changes. This is setup state only: no application infrastructure, WAR or Ansible bucket, or deployment had been recorded as created or verified in the new account by that date. See `PROGRESS.md` for the evidence limits.
 
-## Planned scope
+**Not done:** Jenkins, application deployment, health checks, and rollback testing. Jenkins is required before project completion, but the setup option is still open. No new-account application deployment design, cost gate, or implementation approval has been completed.
 
-1. GitHub Actions: build and test the application (first milestone).
-2. AWS deployment design and cost approval, then deployment.
-3. Jenkins: the same build and deployment flow, run from Jenkins.
+## Scope and next phases
 
-## Source and attribution
+- Keep Phase 1 limited to build and test. Do not add AWS access to public pull-request workflows.
+- Recorded deployment order: complete AWS design and cost review, then add GitHub Actions deployment to the approved target, subject to separate design, cost, and implementation approval. Jenkins is a required later phase for the same build/deployment flow and target; this sequence does not authorize resource creation or deployment.
+- Keep Project 3 infrastructure, Terraform state, buckets, and credentials separate from the other portfolio projects unless a specific reuse design is approved and verified.
 
-VProfile is an instructor-provided reference application from the Decoding DevOps course. It is not written by the author of this repository. The source is included as the pinned Git submodule `vprofile-src`, which points to the fork `dmncfrncsc/vprofile-project`; that fork is reported to derive from `hkhcoder/vprofile-project`, but this has not been independently verified.
+## Source and artifact handling
 
-**Source-use permission is unresolved.** No license file was found in the source repository, and the course terms were not checked. This repository therefore contains only the author's own pipeline code, infrastructure code, and documentation. Built application artifacts (WAR files) are kept in private storage and are not published here.
+The pinned `vprofile-src` submodule contains the instructor-provided VProfile source. Attribution is preserved. Source-use permission remains unresolved; this is an accepted project risk, not a permission grant. A built WAR must not be published in this repository, a public release, or workflow logs. Current records say the new account has no WAR storage bucket; private artifact storage is only a future option after the applicable design, cost, and implementation approvals.
 
-## Repository documents
+The submodule points to `dmncfrncsc/vprofile-project`; its relationship to `hkhcoder/vprofile-project` is reported but has not been independently verified. No license file was found in the checked source, and course terms were not checked.
 
-- `PROGRESS.md`: current state, decisions, and next steps.
-- `NOTES.md`: learning guide organized by project step.
+## Project documents
+
+- `PROGRESS.md` — current state, evidence, open issues, and next step.
+- `PROGRESS-HISTORY.md` — dated milestones and evidence supporting the current handoff.
+- `NOTES.md` — detailed technical explanations and learning reference.
+- `docs/decisions/` — durable records for meaningful design choices.

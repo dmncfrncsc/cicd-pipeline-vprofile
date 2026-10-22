@@ -1,39 +1,78 @@
-# Decision: Store bootstrap state in the S3 state bucket
+# Decision: Store Project 3 bootstrap state in its S3 state bucket
 
-**Date:** 2026-10-17
+**Canonical decision record updated 2026-10-22.** This record combines the historical prior-account migration evidence with the new-account backend decision. AWS resource state and role details are documented from recorded terminal output and author-supplied policy text and console screenshots; they have not been freshly checked.
 
-**Status:** Chosen and migrated; a state-metadata change remains unexplained.
+**Status:** Chosen and migrated in the new account according to recorded 2026-10-21 terminal evidence. State metadata changed unexpectedly. Author-supplied evidence includes a review of the saved role policy, but effective permissions and live state metadata have not been fully verified. This status is not a fresh live AWS check. The role's ability to remove the HTTPS-only bucket policy was explicitly accepted by the author on 2026-10-22 as a temporary risk (see "HTTPS-only bucket policy: accepted temporary risk" below).
 
 ## Problem and constraints
 
-The bootstrap configuration initially kept its Terraform state in a local file. That is simple, but ties Terraform's record of the state bucket to one computer and makes the file harder to use safely from another authorized environment. The S3 bucket already existed, had versioning and encryption enabled, and had a dedicated state key planned. The bootstrap must first create the bucket locally because the bucket cannot hold state before it exists.
+The bootstrap Terraform configuration creates the bucket that will hold its state, so it must first run with local state. Keeping that state local long term ties the bucket's record to one computer. Project 3 moved to a new AWS account; its state and permissions must stay separate from Projects 1 and 2. State files and backups must stay out of the public repository.
 
-## Decision and reason
+## Decision
 
-Move the bootstrap state to the existing bucket `p3-vprofile-tfstate-x4b8t3`, at `bootstrap/terraform.tfstate`, using the `p3-terraform` profile, SSE-S3 encryption, and `use_lockfile = true`. This tests the remote backend, lock, and Job 2 object permissions before Phase D, while the managed stack is still only the six-resource bucket bootstrap.
+After creating the new account's dedicated state bucket with local state, migrate the bootstrap state to that bucket at `bootstrap/terraform.tfstate`, in `us-east-1`, using SSE-S3 and Terraform S3 lock files (`use_lockfile = true`). The recorded new-account bucket is `p3-vprofile-tfstate-r5w8n2`. The local backend configuration contains that bucket, key, region, encryption flag, and lock-file setting. Recorded read-backs showed versioning, public-access blocking, AES256 encryption, a 30-day noncurrent-version lifecycle rule, and an HTTPS-only bucket policy.
 
-## Alternatives considered
+This decision applies only to Project 3's new-account bootstrap. It does not authorize state sharing, infrastructure reuse, deployment, or bucket deletion.
 
-- **Keep local state:** fewer settings and permissions, but state stays tied to one computer and can be lost with that local copy.
-- **Use the existing S3 bucket:** selected because it was already dedicated to Terraform state; adds bucket access and locking permissions and makes the bucket hold its own creation record.
-- **Create another state bucket:** not needed because the existing bucket was already the approved dedicated state bucket; this option was not separately costed or tested.
+## Account-wide actions and credit safeguard
 
-## Trade-offs and safeguards
+The author directed that the AWS Organizations console not be opened or used, including for read-only inspection of organization-level controls. In the prior account, creating an Organization was followed by credit expiry, and AWS Support's first reply, identified as AI-generated, linked the events. This does not establish causation or the effect of any Organizations action on credits in this account. As a precaution, avoid account-wide actions that could expire credits and stop for explicit direction before changing any account-wide setting. Known actions to avoid include Organization or Control Tower setup, Identity Center changes, account-plan changes or closure, Partner Network membership, Professional Services contracts, Enterprise Agreements, Skill Builder Team subscriptions, and HIPAA/SEC designations; this list is not exhaustive.
 
-The bucket is the storage for its own state, so deletion of the bucket would remove access to that record. The explicit `s3:DeleteBucket` deny protects only the `p3-terraform` role, not every principal. A separate backup was kept outside the repository, and Terraform's local `terraform.tfstate.backup` remained available. S3 versioning preserves older object versions, but the configured lifecycle rule expires noncurrent versions after 30 days. The migration added one small object and did not create an hourly-billed resource; S3 storage and requests can still have charges. State can contain sensitive information, so neither the state nor its backups belong in the public repository.
+## Alternatives and trade-offs
+
+- **Keep local state:** fewer remote permissions and settings, but the state remains tied to one computer and is easier to lose or misplace.
+- **Use Project 3's dedicated S3 bucket:** selected after the bucket exists. It enables a shared remote state path and lock file, but adds IAM and bucket-policy complexity and makes the bucket hold its own creation record.
+- **Use another bucket:** not selected. A second bucket was not needed or separately costed.
+
+Versioning can help recover an earlier object version, but the lifecycle rule removes noncurrent versions after 30 days. The explicit `s3:DeleteBucket` deny in the candidate role policy would protect only requests made by that role, not every AWS principal. S3 storage and requests may still cost money; no hourly-billed application resource was created by the migration.
 
 ## Evidence and limits
 
-Reported from Ubuntu WSL terminal output on 2026-10-17:
+### New account — 2026-10-21
 
-- Before migration, the local state and separate backup had matching SHA-256 fingerprints; the destination prefix was empty in a single-page S3 listing.
-- `terraform init -migrate-state` prompted to copy the local state; `yes` was entered, and Terraform reported that the S3 backend was configured and initialization succeeded.
-- A later `terraform plan` refreshed all six resources and reported “No changes.” A read-only listing showed one 9,682-byte state object and no `.tflock` object after the plan.
-- The local `terraform.tfstate` became 0 bytes. The 9,682-byte local `terraform.tfstate.backup` matched the separate backup. The S3 copy had the same bytes except `serial` (9 to 1) and `lineage` (a new value); replacing only those fields made the fingerprints match. Why Terraform changed them is unresolved.
-- The migration command ran before separate explicit approval had been stated in chat. The CLI `yes` answered Terraform's copy prompt; it was not the separate approval gate. This is recorded as a process deviation, not as approval.
+- Terraform v1.16.5 and AWS provider v6.69.1 initialized the bootstrap configuration. A saved plan showed six resources to add; the separately approved apply completed with six added, none changed, and none destroyed.
+- Read-backs showed versioning enabled, all four S3 public-access settings enabled, AES256 encryption, the 30-day noncurrent-version lifecycle rule, and the `DenyInsecureTransport` bucket policy.
+- The local state was serial 7 and 9,174 bytes. A separate backup matched its SHA-256 fingerprint before migration, and the S3 destination prefix was empty. `terraform init -migrate-state` reported successful migration.
+- After migration, S3 contained the state object and no lock object remained after unlock. A normal plan refreshed all six resources and reported `No changes`. After normalizing only `serial` and `lineage`, the local and S3 state fingerprints matched. The S3 state serial became 1 and its lineage changed; the cause is not known.
+- Keep the local backup and the separate outside-repository backup. The local state file is now empty. Do not push backups, replace active state by hand, reuse the applied plan, or run `terraform destroy` as a diagnostic.
+- A reported local SHA-256/metadata comparison reviewed on 2026-10-22 compared `infra/bootstrap/terraform.tfstate.backup` with a separate outside-repository backup and found the copies byte-for-byte identical, each 9,174 bytes with serial 7 and the same lineage. The exact command and second copy's path were not retained; state contents were not printed. This checks backup-to-backup consistency only; it does not compare either copy with live S3 or explain the changed remote metadata.
 
-The plan and listing show the S3 backend was usable for the tested operation. Terraform output did not identify individual S3 API calls, so the evidence does not prove an action-by-action IAM trace. The migration wrote the state object, so the backend role had effective permission to write the state key (`s3:PutObject`; an inference, not an API trace). A version listing returned `AccessDenied` for `s3:ListBucketVersions`, which `p3-terraform` was not granted, so the number of state versions in S3 is unknown. No `terraform apply` followed this migration, and no state restore or rollback test was performed. Keep the external backup and do not manually overwrite or force-push state while the lineage change is unexplained.
+### Prior account — 2026-10-17 (historical; not the current backend)
+
+- The prior-account bootstrap state was migrated to bucket `p3-vprofile-tfstate-x4b8t3`, key `bootstrap/terraform.tfstate`, using the `p3-terraform` profile. Before migration, the local state and separate backup had matching SHA-256 fingerprints; the recorded S3 destination prefix was empty.
+- The recorded S3 object was 9,682 bytes. Its state serial changed from 9 to 1 and its lineage changed; after normalizing those two fields, the remaining content matched the backup. A later plan refreshed all six resources and reported `No changes`. The cause of the metadata change remained unresolved.
+- A version listing returned `AccessDenied` for `s3:ListBucketVersions`; the number of stored versions was unknown. Terraform output did not provide an API-by-API IAM trace.
+- The migration was recorded as a process deviation: `terraform init -migrate-state` began before separate explicit approval had been given. Answering Terraform's copy prompt with `yes` was not that approval. The decision record was preserved as historical context, not as a current-account instruction.
+- That account is paused and is not the current backend. Its bucket, policy, cost, and live state were not rechecked on 2026-10-22.
+
+### Permission and verification limits
+
+Author-supplied console screenshots and saved-policy text report one customer inline policy, `p3-state-bucket`, no managed policies, and (by author report) no permissions boundary. The screenshot showed only part of the policy. The text is scoped to the state bucket, allows `s3:PutBucketPolicy` and `s3:DeleteBucketPolicy`, and explicitly denies `s3:DeleteBucket`. It does not include `s3:UntagResource`, `s3:ListBucketVersions`, `s3:GetObjectVersion`, or `s3:DeleteObjectVersion`. These are reported findings, not an independent live AWS read.
+
+Allowing `s3:DeleteBucketPolicy` lets the role remove the HTTPS-only bucket policy as well as manage it; on 2026-10-22 the author explicitly accepted that exposure as a temporary risk (see the next subsection). Policy deletion, the explicit bucket-deletion deny, version listing or restore access, and a real HTTP-denial request were not tested. Organization-level controls were not checked because the author directed that the Organizations console not be opened. The role's full effective permissions therefore remain unverified, and the successful migration and plan are not an API-by-API IAM trace. No apply, restore, or rollback test was performed after the new-account S3 migration.
+
+### HTTPS-only bucket policy: accepted temporary risk (2026-10-22)
+
+**Status:** Explicitly accepted by the author on 2026-10-22 as a temporary risk, to be revisited in the D2 IAM review. This is a risk acceptance, not a fix and not a verified control.
+
+**Problem.** The reported `p3-state-bucket` policy text lets `p3-terraform` call `s3:PutBucketPolicy` and `s3:DeleteBucketPolicy` on the state bucket. A session of that role can therefore weaken or remove the `DenyInsecureTransport` policy that rejects plain-HTTP requests.
+
+**Why both actions are kept.** Terraform needs `PutBucketPolicy` to create or update the policy; the prior account's first apply failed when it was missing. It needs `DeleteBucketPolicy` to remove the policy cleanly if the resource is replaced or destroyed. Removing only Delete would add little protection, because Put can overwrite the policy with a permissive one, and it could make Terraform cleanup fail.
+
+**Alternatives considered.**
+- Accept and document (chosen for now).
+- Remove only `s3:DeleteBucketPolicy`: little real protection, with a cleanup cost.
+- Remove both Put and Delete: the role could no longer weaken the policy, but Terraform could not manage it either, so changes would need a second, more privileged identity.
+- A separate, rarely used role for policy changes: keeps Terraform management possible while separating duties, at the cost of more IAM to design and test. Deferred to the D2 IAM review.
+- An organization-level guardrail: not considered, because the safeguard prohibits using AWS Organizations. Other account-wide actions would need the author's approval first.
+
+**Mitigations and their limits.**
+- MFA applies when the role is assumed. It does not protect a session that has already been issued.
+- A later `terraform plan` can show a missing or changed policy as drift. It detects the change after the fact; it does not prevent the change or block HTTP requests.
+- The saved policy text is scoped to the state bucket, but the role's effective permissions remain unverified, so the role is not confirmed to be bucket-only.
+
+**Revisit if** the role is used for anything beyond the state bucket, a second person gets access, or the project moves toward production-like use. Policy deletion, a real HTTP-denial request, and the `s3:DeleteBucket` deny remain untested.
 
 ## Interview explanation
 
-“I moved the small bootstrap's state to the existing S3 bucket before Phase D so I could test remote state, locking, and the scoped object permissions early. Local state would have been simpler, but it would tie Terraform's record to one machine. The trade-off is that the bucket stores the record of its own creation, so I kept an external backup and added a deny on `s3:DeleteBucket` for the Terraform role. That deny stops only that role, not every AWS principal. The migration and a no-change plan succeeded, but the state's lineage and serial changed unexpectedly, so I recorded that as unresolved instead of claiming the migration was fully explained.”
+“I created the Project 3 state bucket first with local state, then migrated the small bootstrap state to S3 with locking so later Terraform runs could use the configured shared backend. I kept a separate backup because both the prior-account and new-account migrations changed Terraform's serial and lineage unexpectedly. The normalized content matched and the new-account plan reported no changes, but the cause of those metadata changes and some IAM actions remain unverified, so I recorded those limits instead of claiming the migration was fully explained. I also recorded that the Terraform role can remove the HTTPS-only bucket policy, which I accepted as a temporary risk to revisit in the IAM review instead of claiming it was controlled.”
