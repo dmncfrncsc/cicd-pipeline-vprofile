@@ -60,7 +60,7 @@ The draft includes `iam:PassRole` only on `p3-vprofile-instance-role` because th
 - Root is reported as the only existing admin path. The author reports a root sign-in would be possible, but no sign-in was tested. Under the chosen initial-session timing, a separately approved owner session would create both boundary policies and attach only the durable inline policy to `p3-terraform`. The durable-only split keeps VPC, NAT, and EC2 permissions out until the ephemeral stage; networking and compute drafts remain deferred. No owner session is authorized. Root must not be used for Terraform. Any AWS change, cost-bearing operation, or implementation still requires its separate approval.
 - No Organizations, Control Tower, Identity Center, or other account-wide action is part of this plan. Do not infer credit eligibility from that exclusion.
 
-The design, IAM draft, cost assumptions, and first-step runbook still require review before implementation. The author adopted a planning sequence of initial owner permission setup, a first Terraform change limited to the two durable buckets, a later owner session to apply and read back the HTTPS-only policies before either bucket is used, and owner-led teardown. Boundary creation is planned for the initial owner setup; the checklist remains a proposal and must be reviewed. Each Terraform PR needs its own plan review and apply approval. Planning decisions do not authorize policy changes, a root session, or AWS operations.
+The author-approved owner checklist is a working plan only; it does not approve a root sign-in or AWS changes. The planning sequence is initial owner permission setup, a first Terraform change limited to the two durable buckets, a later owner session to apply and read back the HTTPS-only policies before either bucket is used, and owner-led teardown. The Terraform design, IAM drafts, cost assumptions, and implementation still need review. Each Terraform PR needs its own plan review and apply approval. Planning decisions do not authorize policy changes, a root session, or AWS operations.
 
 ## Interview explanation
 
@@ -156,7 +156,7 @@ The deploy role must be usable by GitHub Actions runs from `main` only, and pull
 3. **Owner applies HTTPS-only controls after creation:** a bucket policy cannot be attached until its bucket exists. The owner therefore applies the reviewed HTTPS-only rule to each bucket after creation, then reads back the policy and planned security settings before any upload or deployment. The adopted read-back criteria are: each bucket has its reviewed bucket-specific policy attached; all four Block Public Access settings are enabled on both buckets; both buckets report SSE-S3 (`AES256`); and transfer-bucket versioning is off. These checks confirm saved settings, not behavior from a real plain-HTTP request. The empty-bucket interval between the Terraform apply and this read-back is a known, temporary gap.
 4. **Owner-led teardown later:** because the owner-controlled bucket policies and separately managed boundary policies are outside Terraform, teardown needs a documented owner step. No teardown has been planned as an immediate action.
 
-**Boundary timing at this checkpoint:** the boundary policies stay outside `p3-terraform` and the Terraform layer. A boundary must exist when Terraform creates its role, but the first planned Terraform change creates only buckets. Timing was unresolved at this point; the author later chose to create both boundaries during initial owner setup. The checklist remains a proposal, not an adopted runbook.
+**Boundary timing at this checkpoint:** the boundary policies stay outside `p3-terraform` and the Terraform layer. A boundary must exist when Terraform creates its role, but the first planned Terraform change creates only buckets. Timing was unresolved at this point; the author later chose to create both boundaries during initial owner setup. The checklist had not yet been approved at that checkpoint; it was approved as a working checklist later on 2026-10-23, as recorded below.
 
 ### Read-only preflight result (reported by the author)
 
@@ -168,7 +168,7 @@ At that checkpoint, the next work was to prepare a review-only owner-session che
 
 ## 2026-10-23 — owner-session preparation decisions (planning only)
 
-**Status:** The author chose the session timing, first-session permission scope, and account-ID handling described below. These are planning decisions only. The checklist remains a proposal; no root sign-in, Terraform code, plan, apply, AWS change, or spending has been approved or recorded.
+**Status:** The author chose the session timing, first-session permission scope, and account-ID handling described below. On 2026-10-23, the author approved the two-session owner checklist as a working checklist for planning only. This did not authorize a root sign-in or an AWS change. No root sign-in, Terraform code, plan, apply, or spending has occurred.
 
 ### Why the first two owner sessions are separate
 
@@ -181,7 +181,27 @@ The durable candidate grants `iam:PutRolePolicy` on the two project roles but no
 
 ### Account-ID preparation
 
-The author chose to keep `<ACCOUNT_ID>` placeholders in Git and prepare any substituted documents in a private WSL home folder outside the repository, suggested as `~/p3-owner-session/`. For the initial owner session, the proposed copies are the durable inline policy and deploy boundary; the instance boundary does not contain an account-ID placeholder. The proposed `read -r` method keeps typed input out of shell history but does not hide it from terminal echo. The suggested extraction and substitution commands have not been confirmed as run, so the private copies may not exist. The earlier extraction command used fixed lines 842–913 for the deploy boundary; this documentation update added text above that section, so those line numbers are stale and must be regenerated from the current heading before use. Run the preparation from WSL, not a different shell whose `~` could point elsewhere. Never copy the real ID into this repository.
+The author chose to keep `<ACCOUNT_ID>` placeholders in Git and prepare substituted files in `~/p3-owner-session/` in WSL, outside the repository. Author-supplied WSL output dated 2026-10-23 reports that the durable template (17 statements, 4,970 compact characters, 16 placeholders) and deploy boundary (8 statements, 1,407 characters, 2 placeholders) were parsed and checked. Their substituted copies had no placeholders left and each contained one distinct 12-digit value matching the account returned by STS under `assumed-role/p3-terraform`. The instance boundary (1 statement, 756 compact characters) contains no account-ID placeholder. The actual ID is not recorded here. These are file-syntax and target-ID checks, not AWS policy validation or proof of effective permissions. The WSL credentials were cleared after the checks. `clip.exe` ran successfully, but an actual paste was not confirmed. The files are outside this repository and were not independently inspected during this documentation update.
+
+### Owner-session working checklist (approved for planning only, 2026-10-23)
+
+This checklist was approved as a working plan, not as permission to sign in as root or make changes. Root sign-in availability remains untested. Confirm the account shown in the console is the intended new account before pasting any policy; compare identifying digits privately. Do not open Organizations or Identity Center or change account-wide settings.
+
+**Session 1 — initial owner setup, before the first Terraform change:**
+
+1. Create the customer-managed policy `p3-vprofile-deploy-boundary` from the saved deploy-boundary JSON.
+2. Create `p3-vprofile-instance-boundary` from the saved instance-boundary JSON.
+3. Attach the saved durable policy to the `p3-terraform` role as an inline policy. The name `p3-terraform-durable` was suggested but has not been confirmed by the author; settle the name before any session.
+4. Read back that both boundaries exist under the exact names and that `p3-terraform` has its existing `p3-state-bucket` inline policy plus the new durable inline policy. The checklist calls for no customer-managed policy attached to `p3-terraform` and no permissions boundary assigned to that role.
+5. Sign out. Stop and report any console error, unexpected prompt, Organizations or Identity Center offer, or policy-size error.
+
+The checklist proposes copying the account-specific durable JSON from WSL with `clip.exe < ~/p3-owner-session/durable.json`. The reported test only piped harmless text to `clip.exe` and confirmed the program ran; this file-redirection method and an actual paste have not been confirmed. Test with harmless text before using this method for a policy.
+
+**Between sessions:** the first Terraform code and plan, limited to the two durable buckets, require separate approval. They are not part of this checklist.
+
+**Session 2 — after both buckets exist and before either is used:** apply the saved HTTPS-only policy to each bucket: `p3-vprofile-war-k7m3q9` and `p3-vprofile-ansible-transfer-k7m3q9`. Read back that each saved policy matches its draft, all four Block Public Access settings are enabled on both buckets, default encryption is SSE-S3, and transfer-bucket versioning is **Disabled**, not Suspended. These reads confirm saved settings; they do not test rejection of a real HTTP request. Sign out after read-back.
+
+Each owner session and AWS change still needs separate explicit authorization. The working checklist does not authorize session 1, session 2, Terraform, implementation, or spending.
 
 ### Review-only durable-bucket policy drafts
 
@@ -189,4 +209,4 @@ The two complete JSON drafts are saved in the [IAM draft package](../drafts/new-
 
 ### Remaining gates
 
-The owner-session checklist still needs review and finalization. The first Terraform code and plan, limited to the two buckets, do not exist and need their own implementation and apply approvals. IAM semantics, provider behavior, effective permissions, root sign-in, Service Quotas, and the bucket settings remain unverified. No root session, AWS action, implementation, or spending is approved.
+The name `p3-terraform-durable` and whether to attempt root sign-in remain unresolved; root sign-in availability is untested. The first Terraform code and plan, limited to the two buckets, do not exist and need their own implementation and apply approvals. IAM semantics, provider behavior, effective permissions, Service Quotas, and the bucket settings remain unverified. No root session, AWS action, implementation, or spending is approved.
