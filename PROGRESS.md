@@ -25,7 +25,9 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 | Implementation, spending, and AWS changes | Not approved |
 | Root console session | Not approved; root is reported as the only existing admin path and is planned to create the boundaries and attach the reviewed durable policy under option B |
 | Boundary ownership | Option B chosen (2026-10-22): `p3-terraform` will not create or edit the boundaries; a separately approved root session is planned. Planning only |
-| `p3-terraform` role-policy/trust scope | Undecided; no option was selected or accepted in the supplied review. Revisit after both project-role permission policies and trust policies are drafted and the open boundary-scope issues are resolved; see the [new-account design decision](docs/decisions/new-account-deployment-design.md) |
+| `p3-terraform` role-policy/trust scope | Option 2 chosen as the working choice for review (2026-10-23): an explicit deny of `iam:UpdateAssumeRolePolicy` and `iam:DeleteRole` on `p3-vprofile-deploy`, placed in the root-attached durable policy; the instance role stays under Terraform (risk accepted as part of option 2 as described). Planning only; not approved for implementation. Caveats in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) |
+| Deploy-role GitHub trust design | GitHub Environment `production` restricted to `main` chosen for review (2026-10-23); trust checks audience, environment subject, `ref`, `environment`, repository ID and owner ID. Draft is review-only; the environment `sub` string is unverified |
+| Ansible connection method | `aws_ssm` plugin from the GitHub runner is the working assumption (2026-10-23); not verified, and the session document it uses is unconfirmed |
 | Jenkins J1 vs. J2 | Undecided; Jenkins is required before project completion |
 | HTTPS-only bucket-policy exposure | Bootstrap state-bucket risk temporarily accepted; acceptance for the two durable buckets is not recorded and remains undecided |
 
@@ -33,7 +35,7 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 
 - **State metadata (2026-10-22):** live S3 showed serial 1 and a different lineage from the preserved backup (serial 7). Contents were not compared; the cause is unknown.
 - **Bootstrap IAM and S3 settings:** `s3:PutBucketPublicAccessBlock` on the bootstrap role is a separate, unaccepted issue. Account-level S3 settings are unchecked; do not rely on them as a backstop.
-- **New-account IAM package:** the original final 14-statement JSON was not recovered. The review-only package preserves the 15-statement reconstruction, earlier boundary drafts, and a separate 14-statement option-B reconstruction; none is active or applied. No role-policy/trust option was selected or accepted, and effective permissions remain unverified. The deploy role's GitHub trust must exclude pull-request workflows. The role-policy scope, explicit-deny alternative, broad SSM and Parameter Store scopes, encryption mode, `p3-terraform` trust/MFA condition, ephemeral policy/state key, and durable-bucket `s3:PutBucketPolicy` exposure remain open. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
+- **New-account IAM package:** the original final 14-statement JSON was not recovered. The review-only package preserves the 15-statement reconstruction, earlier boundary drafts, and a separate 14-statement option-B reconstruction, plus review-only drafts added 2026-10-23 (deploy trust, deploy permission v1, instance trust, instance permission v2, and a deploy-role deny statement); none is active or applied. Option 2 is the working choice for the `p3-terraform` scope (review only). Both boundaries still reflect the older, broader drafts and must be redrafted before any root session. The deploy role GitHub trust must exclude pull-request workflows; its drafted environment `sub` string is unverified. Effective permissions remain unverified. Still open: the SSM session document the `aws_ssm` plugin uses, encryption mode, `p3-terraform` trust/MFA condition, ephemeral policy/state key, durable-bucket `s3:PutBucketPolicy` exposure, aggregate inline-policy size, and the durable-policy statements not reviewed in this session (`CreateDeployRoleOnlyWithDeployBoundary`, `CreateInstanceRoleOnlyWithInstanceBoundary`, `PassOnlyTheInstanceRole`, `ManageInstanceProfile`, `ReadBoundaryPolicies`). See the [IAM draft package](docs/drafts/new-account-iam-policy-package.md) and the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 - **Costs and credits:** the cost gate was accepted on dated estimates, not a quote. Its accepted session-duration basis is unconfirmed: the design record labels 8 hours as an assumption, while the history comparison shows illustrative 48-hour and 730-hour cases. Regional pricing and workload limits remain open; charges and this account’s credit eligibility are unknown, and no monthly budget exists. Prior-account credits expired after an Organization was created. Do not infer that this account has the same eligibility or credit outcome.
 
 ## Safety boundaries
@@ -50,7 +52,7 @@ The cost gate is accepted. Complete the durable and ephemeral IAM/design review,
 
 ## Next safe step
 
-When the IAM review resumes, draft the deploy role's GitHub OIDC trust policy for review, with pull-request workflows excluded. Then draft both project-role permission policies and both trust policies, and narrow the broad SSM document and instance-boundary Parameter Store scopes before implementation. Revisit the `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` decision only after that review; no option has been accepted. Keep the package review-only. No root session, AWS check or change, implementation, or spending is approved. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
+Redraft both permissions boundaries to match the narrowed role policies (instance boundary: SSM agent actions only; deploy boundary: deploy permission policy v1, optionally with a few read-only actions as headroom), then recheck the aggregate inline-policy size with the added `DenyDeployRoleTrustChanges` statement. Resolve the remaining open IAM items listed above and confirm the environment `sub` string before any first apply. Option 2 is the working choice for review only. Keep the package review-only. No root session, AWS check or change, implementation, or spending is approved. See the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
 
 ## References
@@ -59,6 +61,7 @@ When the IAM review resumes, draft the deploy role's GitHub OIDC trust policy fo
 - [NOTES.md](NOTES.md): technical learning reference
 - [README.md](README.md): repository overview
 - [Decision records](docs/decisions/): [bootstrap backend](docs/decisions/terraform-bootstrap-s3-backend.md) and [new-account design](docs/decisions/new-account-deployment-design.md)
+- Claude Project Knowledge copies of PROGRESS.md and PROGRESS-HISTORY.md predate the 2026-10-23 updates; refresh them only with separate explicit authorization.
 
 Defer the interview guide until implementation is sufficiently complete and verified. A later guide should separate tutorial-provided, pre-existing, generated, and AI-assisted work from verified author contributions.
 

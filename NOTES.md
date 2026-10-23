@@ -524,3 +524,29 @@ The new-account plan is separate from the earlier Phase D design notes above. It
 **Public-access block and bucket policy are separate controls:** The durable-bucket draft keeps read access to the public-access-block settings but removes permission to change them. Without a Terraform `aws_s3_bucket_public_access_block` resource, Terraform will not manage or detect later drift in those settings; the planning sequence calls for reading back all four after bucket creation. The draft proposes keeping `s3:PutBucketPolicy` for the two named buckets so Terraform can manage their HTTPS-only policies, but the author has not explicitly accepted that separate exposure. The bootstrap state bucket is different: its role text includes `s3:PutBucketPublicAccessBlock`, and its local bootstrap configuration declares that resource. The temporary risk acceptance recorded for the bootstrap bucket does not settle the durable-bucket decision.
 
 **Review limits:** The original final 14-statement policy text was not recovered. The supplied 15-statement reconstruction and two earlier boundary drafts are preserved as review-only code blocks in the [IAM draft package](docs/drafts/new-account-iam-policy-package.md); they are not active policy files or recorded as applied. Treat reported counts, sizes, and permission behavior as unverified. The current policy gaps and decisions are tracked in the [new-account design decision](docs/decisions/new-account-deployment-design.md); the `p3-terraform` trust/MFA condition and account-level S3 settings remain unchecked.
+
+## OIDC trust, permissions boundaries, and the aws_ssm connection (learning notes, 2026-10-23)
+
+### What a role's trust policy checks
+
+A role has two separate policies. The permission policy says what the role may do. The trust policy says who may become the role. For GitHub OIDC, AWS compares fields in the workflow's signed token (called claims) with conditions in the trust policy. The conditions used in the draft are `aud` (audience), `sub` (subject), `ref` (the branch or tag), `environment`, `repository_id` and `repository_owner_id`. According to AWS documentation, these GitHub keys can be used only in the trust policy, not in the permissions of the session.
+
+### Subject formats
+
+- A branch run: the repository prefix, then `:ref:refs/heads/BRANCH`.
+- A pull-request run: the repository prefix, then `:pull_request`.
+- A job that uses a GitHub Environment: the repository prefix, then `:environment:NAME`. This form names the environment and not the branch, so a separate `ref` condition or an Environment branch rule is needed to keep the role to `main`.
+- For repositories created or renamed after 2026-07-15 (and repositories that opt in), the prefix includes the owner ID and repository ID joined with `@`. The repository's Actions settings, under OIDC, shows the exact prefix. A trust policy written with names only will not match.
+- Use exact matching (`StringEquals`). GitHub's own AWS guide shows a wildcard example that also matches pull-request runs.
+
+### A permissions boundary limits permissions, not trust
+
+A boundary caps what a role can ever do. It does not limit who can be named in the role's trust policy. A principal that can update a role's trust, or delete and recreate the role, can change who may assume it. An explicit Deny overrides any Allow, so a Deny on `iam:UpdateAssumeRolePolicy` and `iam:DeleteRole` closes both paths, provided the policy holding the Deny cannot be edited by the same principal. This is reasoning from AWS behavior I know and from the draft statements; none of it was tested.
+
+### The aws_ssm connection
+
+The plugin runs Ansible tasks through an SSM session. It needs an S3 bucket to move files, even for shell and command modules, because Ansible sends its module code through the bucket. The controller (the GitHub runner) needs the S3 permissions. The older Ansible documentation says the instance needs `curl` and network access to S3 but no S3 IAM credentials, because the controller creates presigned URLs. Leftover transfer files can persist in version history if the bucket is versioned, so an unversioned transfer bucket is recommended.
+
+### Evidence limits and learning check
+
+These notes come from the documentation listed in the [new-account design decision](docs/decisions/new-account-deployment-design.md) and from author-supplied screenshots and output. Nothing was tested in AWS. No teach-back was recorded in this session, so understanding is not confirmed.
