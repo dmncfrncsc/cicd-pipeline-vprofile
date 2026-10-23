@@ -611,3 +611,176 @@ Review notes:
   ]
 }
 ```
+
+## 2026-10-23 review-only drafts (deploy and instance roles)
+
+Added after the sections above. Review-only; none is active or applied. `<ACCOUNT_ID>` remains a placeholder. The two permissions-boundary drafts above still reflect the older, broader policies and must be redrafted to match these before any root session. The environment `sub` string and the session document are unverified.
+
+### Deploy-role trust policy (Environment `production`, `main` only)
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowGitHubProductionFromMainOnly",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:dmncfrncsc@104504982/cicd-pipeline-vprofile@1399501719:environment:production",
+          "token.actions.githubusercontent.com:ref": "refs/heads/main",
+          "token.actions.githubusercontent.com:environment": "production",
+          "token.actions.githubusercontent.com:repository_owner_id": "104504982",
+          "token.actions.githubusercontent.com:repository_id": "1399501719"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Deploy-role permission policy v1 (assumes the `aws_ssm` plugin)
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WarBucketObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::p3-vprofile-war-k7m3q9/*"
+    },
+    {
+      "Sid": "WarBucketList",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:ListBucketVersions", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::p3-vprofile-war-k7m3q9"
+    },
+    {
+      "Sid": "TransferBucketObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9/*"
+    },
+    {
+      "Sid": "TransferBucketList",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9"
+    },
+    {
+      "Sid": "StartSessionOnTaggedInstances",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
+      "Condition": {
+        "StringEquals": { "ssm:resourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "StartSessionDocumentUnverified",
+      "Effect": "Allow",
+      "Action": "ssm:StartSession",
+      "Resource": "arn:aws:ssm:us-east-1:<ACCOUNT_ID>:document/SSM-SessionManagerRunShell"
+    },
+    {
+      "Sid": "OwnSessionsOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ssmmessages:OpenDataChannel",
+        "ssm:TerminateSession",
+        "ssm:ResumeSession"
+      ],
+      "Resource": "arn:aws:ssm:*:*:session/${aws:userid}-*"
+    },
+    {
+      "Sid": "SessionReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeSessions",
+        "ssm:GetConnectionStatus",
+        "ssm:DescribeInstanceProperties",
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### Instance-role trust policy
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowEc2ServiceToAssume",
+      "Effect": "Allow",
+      "Principal": { "Service": "ec2.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+### Instance-role permission policy v2 (SSM agent actions only)
+
+`ssm:GetParameter` and `ssm:GetParameters` were removed from the copied agent list. If the agent fails to register on the first test, check those two actions first.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SsmAgentCore",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeAssociation",
+        "ssm:GetDeployablePatchSnapshotForInstance",
+        "ssm:GetDocument",
+        "ssm:DescribeDocument",
+        "ssm:GetManifest",
+        "ssm:ListAssociations",
+        "ssm:ListInstanceAssociations",
+        "ssm:PutInventory",
+        "ssm:PutComplianceItems",
+        "ssm:PutConfigurePackageResult",
+        "ssm:UpdateAssociationStatus",
+        "ssm:UpdateInstanceAssociationStatus",
+        "ssm:UpdateInstanceInformation",
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel",
+        "ec2messages:AcknowledgeMessage",
+        "ec2messages:DeleteMessage",
+        "ec2messages:FailMessage",
+        "ec2messages:GetEndpoint",
+        "ec2messages:GetMessages",
+        "ec2messages:SendReply"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### Statement to add to the option-B durable policy (option 2)
+
+Not yet merged into a full durable-policy JSON. The aggregate inline-policy size needs rechecking after the addition.
+
+```json
+{
+  "Sid": "DenyDeployRoleTrustChanges",
+  "Effect": "Deny",
+  "Action": ["iam:UpdateAssumeRolePolicy", "iam:DeleteRole"],
+  "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/p3-vprofile-deploy"
+}
+```
