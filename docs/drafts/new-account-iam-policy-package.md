@@ -1,18 +1,18 @@
 # New-account IAM policy draft package
 
-**Status: review-only drafts, not applied. Updated 2026-10-23.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, and the current redrafted boundaries in the final section. The original reported 14-statement policy was not recovered. These texts are documentation for continued review, not deployable policy files or approval to create or change AWS resources.
+**Status: review-only drafts, not applied. Updated 2026-10-23.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, the redrafted boundaries, and review-only ephemeral state, networking, and compute policy statements. The original reported 14-statement policy was not recovered. These texts are documentation for continued review, not deployable policy files or approval to create or change AWS resources.
 
 Replace `<ACCOUNT_ID>` only in a private working copy if a later, separately approved implementation requires it. Never put the real account ID in this public repository.
 
 ## Decisions and limits
 
 - The author first approved Terraform creating and managing the two named boundary policies as a planning decision, then chose option B on 2026-10-22, superseding it: the boundaries are planned to be created outside `p3-terraform` in a separately approved root session. The preserved 15-statement reconstruction below retains the superseded `ManageTwoBoundaryPolicies` statement; the separate option-B revision at the end removes only that statement. Both remain reconstructions, and the 14-statement revision is not the unrecovered original JSON. This does not approve applying these drafts or starting a root session.
-- The preserved `ManageTwoNamedRoles` statement includes `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on the project roles. Option B removes Terraform's ability to edit boundary-policy text, but not its ability to change the roles' permission policies or trust. The effective impact is unverified, depends on the undrafted role/trust policies and boundary controls, and has not been explicitly accepted; see the [new-account design decision](../decisions/new-account-deployment-design.md).
-- The durable policy includes `s3:PutBucketPolicy` on the WAR and Ansible-transfer buckets. The author’s explicit acceptance of that exposure is not recorded; it remains undecided. The separate temporary acceptance for the bootstrap state-bucket policy does not apply to these two buckets.
+- The preserved `ManageTwoNamedRoles` statement includes `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on the project roles. The author chose the option-2 review direction: a root-attached deny is planned for deploy-role trust updates and deletion, while the instance role remains under Terraform as an accepted planning trade-off. Effective permissions remain unverified because the complete attached policy set and boundary behavior have not been checked; see the [new-account design decision](../decisions/new-account-deployment-design.md).
+- Resolved 2026-10-23 (planning only): `s3:PutBucketPolicy` is removed from `ManageDurableBuckets` in the option-B copy, and root applies the HTTPS-only policies on the two durable buckets. This 15-statement reconstruction still contains the action as a historical record. The bootstrap state-bucket acceptance is separate.
 - The 15-statement durable policy is a reconstruction from an earlier 11-statement draft and later summarized additions. It is not the unrecovered original 14-statement text. The two earlier full boundary drafts are retained below as superseded; the redrafted boundary JSON in the final section is the current review-only planning version dated 2026-10-23.
 - The superseded earlier deploy boundary used `SsmDocumentsUnverified` for broad SSM document resources and `SsmOwnSessionsOnly` with a `${aws:userid}` session ARN pattern. The redrafted deploy boundary names `SSM-SessionManagerRunShell`, but its existence and use by the plugin remain unverified; the exact match between the session ARN pattern and the workflow’s chosen role-session name also remains unverified. The redrafted instance boundary excludes `ssm:GetParameter` and `ssm:GetParameters`.
-- Encryption mode, the `p3-terraform` trust policy and MFA condition, the ephemeral-layer IAM policy and state key, and the compatibility/scope of `iam:PassRole` for EC2 launch remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md).
-- The reported character counts and AWS quota calculations have not been independently verified. No policy in this package is recorded as applied.
+- SSE-S3 for both durable buckets and the ephemeral state key `ephemeral/terraform.tfstate` are author-selected planning choices. Supplied console text shows the `p3-terraform` trust names `p3-cli`, permits `sts:AssumeRole`, and requires MFA; the no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. The ephemeral networking, compute, and state statements are now preserved below as review-only drafts; their action/condition support and provider call path are unverified. The managed-policy split is a draft proposal, not implementation approval. `iam:PassRole` compatibility for `RunInstances` and the default EBS key remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md).
+- Author-supplied terminal output measured draft text at 4,427 compact characters for the option-B policy, 1,407 for the deploy boundary, 1,641 and 2,614 for the two networking fragments, and 2,035 for the compute fragment. Estimated wrapper-inclusive sizes are about 4,305 for networking and 2,085 for compute; these are estimates, not measurements of complete policy documents. The authorized 2026-10-23 check of official AWS IAM quota documentation reported a 10,240-character aggregate inline-policy limit excluding whitespace, 6,144 per customer-managed policy, and a default quota of 10 managed policies per role (maximum 25). These are draft-text measurements and documented defaults, not policy validation or the account's effective Service Quotas; boundary counting against the per-role quota remains unverified. No policy in this package is recorded as applied.
 
 ## Durable-layer policy reconstruction
 
@@ -397,7 +397,7 @@ Latest earlier full draft present in the author-supplied material; five statemen
 
 Review notes:
 
-- `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` remain in `ManageTwoNamedRoles` for review. Their associated risk is undecided and not accepted. An MFA challenge used to assume a role controls credential issuance; by itself, it does not restrict actions in an issued session. Terraform plan review does not prevent direct API calls. Since `iam:DeleteRole` and conditional `iam:CreateRole` also remain, removing only `iam:UpdateAssumeRolePolicy` would not prevent changing trust by recreating a role. Preventing Terraform from creating, deleting, or changing trust would require those role-lifecycle operations to happen outside `p3-terraform`. The `p3-terraform` trust/MFA condition and effective permissions remain unverified; this is policy-draft analysis, not a live permission check or AWS-source verification.
+- `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` remain in `ManageTwoNamedRoles` for review. Under the option-2 planning choice, a root-attached deny is planned for deploy-role trust updates and deletion; the instance role remains under Terraform as an accepted planning trade-off. The supplied 2026-10-23 console text shows that the `p3-terraform` trust allows only `sts:AssumeRole` for `p3-cli` and requires MFA. The no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. This is policy-draft analysis, not a live permission check or AWS-source verification.
 - The superseded earlier deploy boundary’s `SsmDocumentsUnverified` statement allowed broad SSM document resources. The 2026-10-23 redraft narrows the document ARN to `SSM-SessionManagerRunShell`; whether that document exists in the new account and is the one used by the plugin remains unresolved.
 - Static review of this exact JSON found no remaining `Allow` for `iam:CreatePolicy`, `iam:DeletePolicy`, `iam:CreatePolicyVersion`, `iam:DeletePolicyVersion`, or `iam:SetDefaultPolicyVersion`, and no explicit `Deny` for those actions. This means the draft itself relies on the absence of an `Allow`; it does not establish effective permissions. Other policies attached to `p3-terraform` could add those actions, and the reported attached-policy set was not independently verified. `iam:DeleteRolePermissionsBoundary` is explicitly denied for both project roles; role creation and boundary attachment are conditioned on the matching boundary ARN; `iam:AttachRolePolicy` and `iam:DetachRolePolicy` are not allowed by this draft. An explicit deny for boundary-policy edits remains an undecided alternative and is not included.
 
@@ -432,7 +432,6 @@ Review notes:
         "s3:GetBucketOwnershipControls",
         "s3:PutBucketOwnershipControls",
         "s3:GetBucketPolicy",
-        "s3:PutBucketPolicy",
         "s3:GetEncryptionConfiguration",
         "s3:PutEncryptionConfiguration",
         "s3:GetBucketVersioning",
@@ -671,7 +670,7 @@ Added after the sections above. Review-only; none is active or applied. `<ACCOUN
     {
       "Sid": "TransferBucketList",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Action": ["s3:ListBucket"],
       "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9"
     },
     {
@@ -774,7 +773,7 @@ Added after the sections above. Review-only; none is active or applied. `<ACCOUN
 
 ### Statement to add to the option-B durable policy (option 2)
 
-Not yet merged into a full durable-policy JSON. The author-supplied size recheck includes this statement and estimates the durable policy plus the state policy at about 6,101 compact characters; the applicable AWS limit and counting method were not verified. Recheck if either policy changes.
+Not yet merged into a full durable-policy JSON. Author-supplied output measured the option-B JSON at 4,427 compact characters. Adding the 172-character deploy-trust deny and the previously reported 1,480-character `p3-state-bucket` policy gives an estimated subtotal of about 6,080; the two ephemeral state statements add about 450, for a rough aggregate near 6,530. The state-policy size and combined aggregate were not remeasured. AWS documentation later supplied the 10,240-character aggregate inline limit, but account-specific Service Quotas were not checked. Recalculate after the final JSON is assembled.
 
 ```json
 {
@@ -791,11 +790,11 @@ Both boundaries now equal the narrowed role permission policies. They are drafts
 
 Remaining validation points:
 - The current [`amazon.aws.aws_ssm` documentation](https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ssm_connection.html) states that the controller uses presigned URLs for S3 transfers, so the managed instance needs no S3 IAM credentials for that documented path. The project’s selected collection version, plugin configuration, and end-to-end transfer path have not been verified. The instance still needs network access to S3 and `curl`; those prerequisites have not been checked on the proposed AMI. If implementation uses a different transfer path, reassess the instance role and boundary before any apply.
-- Text review on 2026-10-23 confirmed that deploy permission policy v1 contains the five controller S3 actions listed in older plugin documentation on the transfer bucket, with object actions on its object ARN and bucket actions on its bucket ARN. The policy lacks `s3:DeleteObjectVersion`, and the project design does not specify the transfer bucket's versioning setting; specify an unversioned bucket or another reviewed cleanup design before implementation. The earlier 11.4.0 source review says Region discovery uses `HeadBucket`, so whether `s3:GetBucketLocation` is needed remains undecided. No AWS bucket setting was checked.
+- Older plugin documentation lists five controller S3 actions. The current deploy permission policy v1 has four on the transfer bucket: `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on its object ARN, plus `s3:ListBucket` on its bucket ARN. `s3:GetBucketLocation` was removed from the transfer-bucket statement only on 2026-10-23; the WAR bucket retains it. The author chose an unversioned transfer bucket, but no live AWS bucket setting was checked. The policy lacks `s3:DeleteObjectVersion`. Keep the removal conditional on pinning `amazon.aws` 11.4.0 or rechecking the source for the chosen version.
 - The ephemeral layer must tag the instance `Project=p3-vprofile`, or `StartSessionOnTaggedInstances` will not match.
 - AWS documents the `${aws:userid}` session ARN pattern; the exact match for the GitHub role’s chosen session name remains unverified. Check the session name set in the workflow’s credentials step.
 - Whether `SSM-SessionManagerRunShell` exists in the new account and is the document the plugin will use remains unverified.
-- The policy size limit for customer-managed policies was not checked.
+- The 2026-10-23 authorized AWS IAM documentation check reported a 6,144-character limit per customer-managed policy and a default of 10 managed policies per role (maximum 25). The account's effective Service Quotas were not checked, and whether permissions boundaries count toward the per-role quota remains unresolved.
 
 ### Instance-role permissions boundary (redrafted)
 
@@ -868,7 +867,7 @@ Exact copy of deploy permission policy v1 (8 statements). `<ACCOUNT_ID>` remains
     {
       "Sid": "TransferBucketList",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Action": ["s3:ListBucket"],
       "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9"
     },
     {
@@ -909,4 +908,328 @@ Exact copy of deploy permission policy v1 (8 statements). `<ACCOUNT_ID>` remains
     }
   ]
 }
+```
+
+## 2026-10-23 ephemeral-layer permissions (review-only, planning)
+
+Drafted from memory and not verified against AWS. None is active or applied. `<ACCOUNT_ID>` is a placeholder. Each block below is a list of statements, not a complete policy. To use one, wrap it in `{"Version":"2012-10-17","Statement":[ ... ]}` and put a comma between the parts of the networking policy.
+
+Proposed structure (not separately approved): if selected, networking and compute statements would go in separate customer-managed policies attached by root, and the two state statements would go in the durable inline policy. Draft-fragment measurements and wrapper-inclusive estimates are listed under Decisions and limits above; they are not measurements of fully assembled policy documents.
+
+Unverified, and each miss would cost a root session under option B: whether each action supports the tag conditions used; which other actions the provider calls; whether the provider tags at creation or afterward; the parameter path and ARN format; Canonical's owner ID and the `ec2:Owner` key; the default EBS key in `us-east-1`; and the account's effective Service Quotas. `iam:PassRole` for `RunInstances` is assumed to be covered by `PassOnlyTheInstanceRole` and was not re-read. No ingress permission is granted on purpose.
+
+### Ephemeral state statements (for the durable inline policy)
+
+```json
+    {
+      "Sid": "EphemeralStateObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::p3-vprofile-tfstate-r5w8n2/ephemeral/terraform.tfstate"
+    },
+    {
+      "Sid": "EphemeralStateLockObject",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::p3-vprofile-tfstate-r5w8n2/ephemeral/terraform.tfstate.tflock"
+    }
+```
+
+### Networking policy, part 1 (describe, tagged creates, create-only tagging)
+
+```json
+    {
+      "Sid": "EphemeralEc2Describe",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeTags"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "us-east-1" }
+      }
+    },
+    {
+      "Sid": "EphemeralCreateTaggedNetworkResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpc",
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable",
+        "ec2:CreateInternetGateway"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:route-table/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*"
+      ],
+      "Condition": {
+        "StringEquals": { "aws:RequestTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralCreateInsideTaggedVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralTagOnCreateOnly",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:route-table/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": [
+            "CreateVpc",
+            "CreateSubnet",
+            "CreateRouteTable",
+            "CreateInternetGateway"
+          ],
+          "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    }
+```
+
+### Networking policy, part 2 (NAT, Elastic IP, security group, wiring, deletes)
+
+```json
+    {
+      "Sid": "EphemeralCreateNatEipAndSg",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNatGateway",
+        "ec2:AllocateAddress",
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:natgateway/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": { "aws:RequestTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralNatAndSgUseExistingTaggedResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNatGateway",
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*"
+      ],
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralTagOnCreateNatEipSg",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:natgateway/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": [
+            "CreateNatGateway",
+            "AllocateAddress",
+            "CreateSecurityGroup"
+          ],
+          "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralWireNetworkTaggedOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:DetachInternetGateway",
+        "ec2:CreateRoute",
+        "ec2:DeleteRoute",
+        "ec2:AssociateRouteTable",
+        "ec2:DisassociateRouteTable",
+        "ec2:ModifyVpcAttribute",
+        "ec2:ModifySubnetAttribute"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:route-table/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*"
+      ],
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralSecurityGroupEgressOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*",
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralDeleteTaggedNetworkResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteVpc",
+        "ec2:DeleteSubnet",
+        "ec2:DeleteRouteTable",
+        "ec2:DeleteInternetGateway",
+        "ec2:DeleteNatGateway",
+        "ec2:DeleteSecurityGroup",
+        "ec2:ReleaseAddress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:route-table/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:natgateway/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*"
+      ],
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    }
+```
+
+### Compute policy (Ubuntu AMI lookup, RunInstances, instance management)
+
+```json
+    {
+      "Sid": "EphemeralComputeDescribe",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeInstanceCreditSpecifications",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeImages"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "us-east-1" }
+      }
+    },
+    {
+      "Sid": "EphemeralReadCanonicalAmiParameter",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:us-east-1::parameter/aws/service/canonical/ubuntu/server/noble/stable/current/amd64/hvm/ebs-gp3/ami-id"
+    },
+    {
+      "Sid": "EphemeralRunInstanceCreatedResources",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
+      ],
+      "Condition": {
+        "StringEquals": { "aws:RequestTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralRunInstanceUseTaggedNetwork",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:subnet/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralRunInstanceCanonicalImageOnly",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:us-east-1::image/*",
+      "Condition": {
+        "StringEquals": { "ec2:Owner": "<CANONICAL_ACCOUNT_ID>" }
+      }
+    },
+    {
+      "Sid": "EphemeralTagOnRunInstances",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": [
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": "RunInstances",
+          "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralManageTaggedInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyInstanceMetadataOptions",
+        "ec2:ModifyInstanceCreditSpecification"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
+      "Condition": {
+        "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    }
 ```
