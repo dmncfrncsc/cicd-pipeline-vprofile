@@ -1,19 +1,73 @@
 # New-account IAM policy draft package
 
-**Status: review-only drafts, not applied. Updated 2026-10-23.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, the redrafted boundaries, and review-only ephemeral state, networking, and compute policy statements. The original reported 14-statement policy was not recovered. Complete assembled candidates and measured sizes are in [new-account-assembled-iam-policy-candidates.md](new-account-assembled-iam-policy-candidates.md). These texts are documentation for continued review, not deployable policy files or approval to create or change AWS resources.
+**Status: review-only drafts, not applied. Updated 2026-10-23.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, the redrafted boundaries, review-only ephemeral state/networking/compute policy statements, and the two durable-bucket HTTPS-only policy drafts. The original reported 14-statement policy was not recovered. Complete assembled IAM candidates and their measured sizes are in [new-account-assembled-iam-policy-candidates.md](new-account-assembled-iam-policy-candidates.md). These texts are for continued review, not deployable policy files or approval to create or change AWS resources.
 
 Replace `<ACCOUNT_ID>` only in a private working copy if a later, separately approved implementation requires it. Never put the real account ID in this public repository.
 
 ## Decisions and limits
 
-- The author first approved Terraform creating and managing the two named boundary policies as a planning decision, then chose option B on 2026-10-22, superseding it: the boundaries are planned to be created outside `p3-terraform` in a separately approved root session. The preserved 15-statement reconstruction below retains the superseded `ManageTwoBoundaryPolicies` statement; the separate option-B revision at the end removes only that statement. Both remain reconstructions, and the 14-statement revision is not the unrecovered original JSON. This does not approve applying these drafts or starting a root session.
+- The author first approved Terraform creating and managing the two named boundary policies as a planning decision, then chose option B on 2026-10-22, superseding it: the boundaries are created outside `p3-terraform` and Terraform. On 2026-10-23, the author chose to create both during the initial owner setup, before Terraform later creates their roles. The preserved 15-statement reconstruction below retains the superseded `ManageTwoBoundaryPolicies` statement; the separate option-B revision removes only that statement. Both remain reconstructions, and the 14-statement revision is not the unrecovered original JSON. No root session is approved.
 - The preserved `ManageTwoNamedRoles` statement includes `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on the project roles. The author chose the option-2 review direction: a root-attached deny is planned for deploy-role trust updates and deletion, while the instance role remains under Terraform as an accepted planning trade-off. Effective permissions remain unverified because the complete attached policy set and boundary behavior have not been checked; see the [new-account design decision](../decisions/new-account-deployment-design.md).
-- Resolved 2026-10-23 (planning only): `s3:PutBucketPolicy` is removed from `ManageDurableBuckets` in the option-B copy, and root applies the HTTPS-only policies on the two durable buckets. This 15-statement reconstruction still contains the action as a historical record. The bootstrap state-bucket acceptance is separate.
+- Resolved 2026-10-23 (planning only): `s3:PutBucketPolicy` is removed from `ManageDurableBuckets` in the option-B copy, and the owner applies the saved HTTPS-only policies to the two durable buckets after their creation. This 15-statement reconstruction still contains the action as a historical record. The bootstrap state-bucket acceptance is separate.
 - The 15-statement durable policy is a reconstruction from an earlier 11-statement draft and later summarized additions. It is not the unrecovered original 14-statement text. The two earlier full boundary drafts are retained below as superseded; the redrafted boundary JSON in the final section is the current review-only planning version dated 2026-10-23.
 - The superseded earlier deploy boundary used `SsmDocumentsUnverified` for broad SSM document resources and `SsmOwnSessionsOnly` with a `${aws:userid}` session ARN pattern. The redrafted deploy boundary names `SSM-SessionManagerRunShell`, but its existence and use by the plugin remain unverified; the exact match between the session ARN pattern and the workflow’s chosen role-session name also remains unverified. The redrafted instance boundary excludes `ssm:GetParameter` and `ssm:GetParameters`.
-- SSE-S3 for both durable buckets and the ephemeral state key `ephemeral/terraform.tfstate` are author-selected planning choices. Supplied console text shows the `p3-terraform` trust names `p3-cli`, permits `sts:AssumeRole`, and requires MFA; the no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. The source-review status and remaining S3/provider gaps for the ephemeral drafts are detailed in the section below and in [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md). The managed-policy split is a draft proposal, not implementation approval. `iam:PassRole` compatibility with the actual provider call path and the default EBS key remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [source-review record](../../PROGRESS-HISTORY.md).
+- SSE-S3 for both durable buckets and the ephemeral state key `ephemeral/terraform.tfstate` are author-selected planning choices. The author chose to attach only the durable inline policy to `p3-terraform` in the initial owner setup; networking and compute policy drafts are deferred until the ephemeral stage. The networking/compute managed-policy split remains a proposal, not separately approved. `<ACCOUNT_ID>` stays in Git; substituted copies are planned for a private folder outside the repository, but the suggested preparation commands were not confirmed as run. Supplied console text shows the `p3-terraform` trust names `p3-cli`, permits `sts:AssumeRole`, and requires MFA; the no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. The source-review status and remaining S3/provider gaps for the ephemeral drafts are detailed below and in [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md). `iam:PassRole` compatibility with the actual provider call path and the default EBS key remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [source-review record](../../PROGRESS-HISTORY.md).
 - **GitHub trust prefix (reported from author-supplied read-only CLI output, 2026-10-23):** the returned `sub_claim_prefix` matches the immutable owner/repository prefix in the deploy trust draft. The endpoint does not return the Environment suffix; `:environment:production` remains unconfirmed until a workflow emits a claim. No GitHub setting was changed.
 - The assembled review candidates measure 4,970 compact characters for the 17-statement durable inline policy, 4,295 for the 10-statement networking proposal, and 2,084 for the 7-statement compute proposal. The measured inline aggregate is 6,450 including the existing `p3-state-bucket` policy at 1,480. Earlier fragment-only sizes are retained where the fragments are recorded, but the wrapper estimates are superseded by these assembled measurements. AWS quota documentation reports 10,240 characters for aggregate inline policies excluding whitespace, 6,144 per customer-managed policy, and a default of 10 managed policies per role (maximum 25). These are text-size checks and documented defaults, not IAM validation or the account's effective Service Quotas; boundary counting remains unverified. No policy in this package is recorded as applied.
+
+## 2026-10-23 durable-bucket HTTPS-only policies (review-only)
+
+The following complete drafts are reconstructed (not verbatim copies) from the bootstrap state-bucket policy in [`infra/bootstrap/main.tf`](../../infra/bootstrap/main.tf), with the durable bucket ARNs substituted. Each denies `s3:*` for any principal when `aws:SecureTransport` is `false`; both the bucket ARN and its `/*` object ARN are listed. Because `Principal` is `*`, the deny also covers the account owner; ordinary AWS CLI and console requests use HTTPS, but this is not an access test. These are review-only policy documents: AWS has not validated or applied them. The HTTPS read-back confirms saved policy text, not an actual HTTP request test. Apply only in a separately approved owner session after the buckets exist; do not use either bucket before the policy and settings read-backs are complete.
+
+### WAR bucket `p3-vprofile-war-k7m3q9`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::p3-vprofile-war-k7m3q9",
+        "arn:aws:s3:::p3-vprofile-war-k7m3q9/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Ansible transfer bucket `p3-vprofile-ansible-transfer-k7m3q9`
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9",
+        "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9/*"
+      ],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}
+```
 
 ## Durable-layer policy reconstruction
 
