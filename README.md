@@ -10,9 +10,9 @@ Project 3 of an AWS DevOps portfolio: build and test the instructor-provided VPr
 
 **Owner-session update (author-reported, 2026-10-23–24):** a separately approved session reportedly created two named permissions boundaries and attached the `p3-terraform-durable` inline policy to `p3-terraform`. The author later reported signing out. The saved AWS policy text was not compared line by line with repository drafts.
 
-**Durable bucket code (merged 2026-10-24):** PR #66 added Terraform for the planned private WAR bucket and an Ansible transfer bucket. Author-supplied WSL output reports a reviewed plan of 6 to add, 0 to change, 0 to destroy. The code has not been applied; no application bucket creation or deployment is recorded. HTTPS-only policies and bucket settings must be applied and read back in a separately approved owner session before either bucket is used.
+**Durable buckets (apply reported 2026-10-24):** PR #66 added Terraform for the private WAR bucket and Ansible transfer bucket. Author-supplied terminal output reports that applying a freshly reviewed saved plan added six resources. AWS CLI output reports SSE-S3 on both buckets, WAR versioning enabled with a 30-day noncurrent-version lifecycle, and no versioning status returned for the transfer bucket. The account ID was redacted, so account alignment is not confirmed in the shared record. The author reports no uploads. HTTPS-only policies and public-access-block settings have not been read back; neither bucket may be used before a separately authorized owner session applies and verifies those protections. No application deployment is recorded.
 
-**Not done:** creating the durable buckets through Terraform, Jenkins, application deployment, health checks, and rollback testing. Jenkins is required before project completion, but the setup option is still open. The new-account cost gate was accepted on 2026-10-22 using existing planning estimates; regional-rate, credit, budget, and technical limits remain open. Terraform apply and spending are not approved. See [PROGRESS.md](PROGRESS.md) and the [new-account design decision](docs/decisions/new-account-deployment-design.md).
+**Not done:** applying the HTTPS-only policies and reading back the required bucket protections, Jenkins, application deployment, health checks, and rollback testing. Jenkins is required before project completion, but the setup option is still open. The new-account cost gate was accepted on 2026-10-22 using planning estimates; live billing and credit status, regional rates, budget, and technical limits remain unchecked. No further AWS action is currently approved. See [PROGRESS.md](PROGRESS.md) and the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
 ## Scope and next phases
 
@@ -22,7 +22,7 @@ Project 3 of an AWS DevOps portfolio: build and test the instructor-provided VPr
 
 ## Source and artifact handling
 
-The pinned `vprofile-src` submodule contains the instructor-provided VProfile source. Attribution is preserved. Source-use permission remains unresolved; this is an accepted project risk, not a permission grant. A built WAR must not be published in this repository, a public release, or workflow logs. Use private artifact storage only after the applicable approvals and required policy/settings read-back.
+The pinned `vprofile-src` submodule contains the instructor-provided VProfile source. Attribution is preserved. Source-use permission remains unresolved; this is an accepted project risk, not a permission grant. A built WAR must not be published in this repository, a public release, or workflow logs. Use private artifact storage only after the applicable approvals and required policy/settings read-back; the author reports that neither durable bucket has been used yet.
 
 The submodule points to `dmncfrncsc/vprofile-project`; its relationship to `hkhcoder/vprofile-project` is reported but has not been independently verified. No license file was found in the checked source, and course terms were not checked.
 
