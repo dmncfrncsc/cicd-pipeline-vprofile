@@ -12,7 +12,7 @@ Replace `<ACCOUNT_ID>` only in a private working copy if a later, separately app
 - The 15-statement durable policy is a reconstruction from an earlier 11-statement draft and later summarized additions. It is not the unrecovered original 14-statement text. The two earlier full boundary drafts are retained below as superseded; the redrafted boundary JSON in the final section is the current review-only planning version dated 2026-10-23.
 - The superseded earlier deploy boundary used `SsmDocumentsUnverified` for broad SSM document resources and `SsmOwnSessionsOnly` with a `${aws:userid}` session ARN pattern. The redrafted deploy boundary names `SSM-SessionManagerRunShell`, but its existence and use by the plugin remain unverified; the exact match between the session ARN pattern and the workflow’s chosen role-session name also remains unverified. The redrafted instance boundary excludes `ssm:GetParameter` and `ssm:GetParameters`.
 - SSE-S3 for both durable buckets and the ephemeral state key `ephemeral/terraform.tfstate` are author-selected planning choices. In session 1, the author reports attaching only the durable inline policy to `p3-terraform`; networking and compute policy drafts are deferred until the ephemeral stage. The networking/compute managed-policy split remains a proposal, not separately approved. `<ACCOUNT_ID>` stays in Git; substituted copies were reported prepared in a private folder outside the repository, but the exact file-to-clipboard command was not confirmed for each policy. Supplied console text shows the `p3-terraform` trust names `p3-cli`, permits `sts:AssumeRole`, and requires MFA; the no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. The source-review status and remaining S3/provider gaps for the ephemeral drafts are detailed below and in [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md). `iam:PassRole` compatibility with the actual provider call path and the default EBS key remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [source-review record](../../PROGRESS-HISTORY.md).
-- **GitHub trust prefix (reported from author-supplied read-only CLI output, 2026-10-23):** the returned `sub_claim_prefix` matches the immutable owner/repository prefix in the deploy trust draft. The endpoint does not return the Environment suffix; `:environment:production` remains unconfirmed until a workflow emits a claim. No GitHub setting was changed.
+- **GitHub OIDC status (author-reported, 2026-10-24):** the `production` Environment is restricted to `main`, with administrator bypass enabled. Temporary workflow Run #1 reported the exact subject recorded in the current trust draft; Run #2 from a non-main branch was blocked once. The current planning choice uses `aud` and exact `sub` only; the checker requested `audience=sts.amazonaws.com` but did not print the `aud` claim separately. The 2026-10-23 six-condition trust JSON below is a historical, superseded checkpoint; the current review-only trust draft follows that earlier JSON. No AWS deploy role or trust policy was applied. See the [design decision](../decisions/new-account-deployment-design.md#2026-10-24-github-oidc-check-and-deploy-role-trust-choice-planning-only).
 - The assembled local candidates measure 4,970 compact characters for the 17-statement durable inline policy, 4,295 for the 10-statement networking proposal, and 2,084 for the 7-statement compute proposal. The measured inline aggregate is 6,450 including the existing `p3-state-bucket` policy at 1,480. Earlier fragment-only sizes are retained where the fragments are recorded, but the wrapper estimates are superseded by these assembled measurements. AWS quota documentation reports 10,240 characters for aggregate inline policies excluding whitespace, 6,144 per customer-managed policy, and a default of 10 managed policies per role (maximum 25). These are text-size checks and documented defaults, not IAM validation or the account's effective Service Quotas; boundary counting remains unverified. Session 1 reports the expected boundary names/counts and durable inline policy name/count. The durable Sid list matched the local candidate before saving, but was not repeated in that saved-policy read-back; no saved IAM JSON was compared line by line. Both HTTPS-only bucket-policy saves are reported; the WAR read-back was described as matching its draft, while fresh transfer saved-policy read-back is unclear. Networking and compute drafts remain unapplied.
 
 ## 2026-10-23 durable-bucket HTTPS-only policies (review-only)
@@ -668,9 +668,11 @@ Review notes:
 
 ## 2026-10-23 review-only drafts (deploy and instance roles)
 
-Added after the sections above. Review-only; none is active or applied. `<ACCOUNT_ID>` remains a placeholder. At this point in the chronology, the two earlier boundary drafts still reflected broader policies; they are superseded by the 2026-10-23 redrafted boundaries at the end of this file. The environment `sub` string and the session document remain unverified.
+Added after the sections above. Review-only; none of these role drafts is active or applied. `<ACCOUNT_ID>` remains a placeholder. At this point in the chronology, the two earlier boundary drafts still reflected broader policies; they are superseded by the 2026-10-23 redrafted boundaries at the end of this file. The Environment `sub` was unverified at this 2026-10-23 checkpoint; the later run and current trust choice are recorded above and in the current trust-draft subsection below. The session document remains unverified.
 
-### Deploy-role trust policy (Environment `production`, `main` only)
+### Superseded deploy-role trust draft (2026-10-23 checkpoint; multiple claims)
+
+This earlier review-only draft included four additional unverified claim conditions and described AWS trust as `main`-only. It is retained as a dated snapshot, not the current planning draft. The 2026-10-24 author choice removes those conditions and relies on the GitHub Environment rule for the `main` restriction; see the current trust-draft subsection below.
 
 ```json
 {
@@ -767,6 +769,34 @@ Added after the sections above. Review-only; none is active or applied. `<ACCOUN
   ]
 }
 ```
+
+### Current deploy-role trust draft (2026-10-24; audience and subject only)
+
+**Status:** Review-only planning draft based on the author's 2026-10-24 choice. It is not applied, and the deploy-role permission policy remains unreviewed. The future deployment job must declare `environment: production` and `permissions: id-token: write`; no other job should declare either. AWS trust does not enforce `main`; it relies on the GitHub Environment branch rule, for which administrator bypass remains enabled. The checker printed `sub` but did not separately display `aud`.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowGitHubExactProductionSubject",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:dmncfrncsc@104504982/cicd-pipeline-vprofile@1399501719:environment:production"
+        }
+      }
+    }
+  ]
+}
+```
+
+The exact `sub` is reported from temporary workflow Run #1. The token request asked for audience `sts.amazonaws.com`, but the decoded `aud` claim was not printed separately. The Environment branch restriction was observed blocking one non-main run; this single test does not establish broader enforcement or remove the administrator-bypass path. See the [design decision](../decisions/new-account-deployment-design.md#2026-10-24-github-oidc-check-and-deploy-role-trust-choice-planning-only) for alternatives, limitations, and remaining review items.
 
 ### Instance-role trust policy
 
