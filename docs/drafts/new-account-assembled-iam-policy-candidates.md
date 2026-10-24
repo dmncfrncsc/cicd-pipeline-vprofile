@@ -1,10 +1,10 @@
 # New-account assembled IAM policy candidates
 
-**Status: local policy texts remain review artifacts and are not IAM-validated or approved for attachment or implementation. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md); the networking candidate was updated 2026-10-24 from its review-only fragments.**
+**Status: session 3 creation and attachment of the networking and compute managed policies to `p3-terraform` are author-reported. The local JSON remains a review artifact: the full saved AWS policies were not compared line by line, and effective permissions are untested. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md); the networking candidate was updated 2026-10-24 from its review-only fragments.**
 
 These complete JSON documents make the current draft structure easy to review and measure. The source fragments remain in the package; if they change, regenerate and recheck these assembled copies. JSON parsing and size checks do not prove that AWS IAM accepts the policies, that the permissions are sufficient or least-privilege, or that provider calls match them.
 
-The durable document is an assembly of the 14-statement option-B reconstruction, the deploy-role trust deny, and the two ephemeral-state statements. It is not the unrecovered original 14-statement policy. The author reports attaching an AWS inline policy named `p3-terraform-durable` and reading back a count of 17 statements. The candidate's Sid list was reported before saving, not repeated in the saved-policy read-back; the saved AWS JSON was not compared line by line, so this file is not a confirmed copy of the live policy. Networking and compute permissions remain review-only candidates for the ephemeral stage. Keeping those drafts as separate managed policies remains a proposal, and no attachment is approved. `<ACCOUNT_ID>` remains a placeholder. No account ID or `p3-state-bucket` policy text is included. See the [new-account design decision](../decisions/new-account-deployment-design.md) for the sequence and rationale.
+The durable document is an assembly of the 14-statement option-B reconstruction, the deploy-role trust deny, and the two ephemeral-state statements. It is not the unrecovered original 14-statement policy. The author reports attaching an AWS inline policy named `p3-terraform-durable` and reading back a count of 17 statements. The candidate's Sid list was reported before saving, not repeated in the saved-policy read-back; the saved AWS JSON was not compared line by line, so this file is not a confirmed copy of the live policy. The networking and compute policies are reported created and attached as separate managed policies during session 3; the saved JSON was not compared line by line with these candidates, and effective permissions are untested. `<ACCOUNT_ID>` remains a placeholder. No account ID or `p3-state-bucket` policy text is included. See the [new-account design decision](../decisions/new-account-deployment-design.md) for the sequence and rationale.
 
 Measurements below exclude whitespace, matching the documented AWS policy character-count method. The 6,450-character aggregate is the assembled durable document (4,970) plus the separately measured existing `p3-state-bucket` inline policy (1,480); only the first document is reproduced here. AWS documentation reports a 10,240-character aggregate inline-policy limit and 6,144 per customer-managed policy. These are documented defaults, not confirmation of this account’s effective Service Quotas.
 
@@ -250,9 +250,9 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
 }
 ```
 
-## Networking customer-managed policy proposal
+## Networking customer-managed policy candidate
 
-12 statements; 4,757 compact characters (whitespace excluded; measured 2026-10-24).
+13 statements; 5,064 compact characters (whitespace excluded; measured 2026-10-24).
 
 ```json
 {
@@ -449,13 +449,28 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
       }
     },
     {
-      "Sid": "EphemeralTagSgRule",
+      "Sid": "EphemeralTagSgRuleAtCreate",
       "Effect": "Allow",
       "Action": "ec2:CreateTags",
       "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
       "Condition": {
         "StringEquals": {
+          "ec2:CreateAction": "AuthorizeSecurityGroupEgress",
           "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralChangeTagsOnProjectSgRules",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "p3-vprofile"
         }
       }
     },
@@ -490,9 +505,9 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
 }
 ```
 
-## Compute customer-managed policy proposal
+## Compute customer-managed policy candidate
 
-7 statements; 2,084 compact characters.
+8 statements; 2,233 compact characters (whitespace excluded; measured 2026-10-24).
 
 ```json
 {
@@ -529,12 +544,22 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
       "Action": "ec2:RunInstances",
       "Resource": [
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*"
       ],
       "Condition": {
         "StringEquals": {
           "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralRunInstanceNetworkInterface",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
         }
       }
     },
@@ -556,7 +581,10 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
       "Sid": "EphemeralRunInstanceCanonicalImageOnly",
       "Effect": "Allow",
       "Action": "ec2:RunInstances",
-      "Resource": "arn:aws:ec2:us-east-1::image/*",
+      "Resource": [
+        "arn:aws:ec2:us-east-1::image/*",
+        "arn:aws:ec2:us-east-1::snapshot/*"
+      ],
       "Condition": {
         "StringEquals": {
           "ec2:Owner": "<CANONICAL_ACCOUNT_ID>"
@@ -569,8 +597,7 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
       "Action": "ec2:CreateTags",
       "Resource": [
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:instance/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:volume/*"
       ],
       "Condition": {
         "StringEquals": {
