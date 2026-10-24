@@ -1,10 +1,10 @@
 # New-account assembled IAM policy candidates
 
-**Status: local policy texts remain review artifacts and are not IAM-validated or approved for further implementation. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md).**
+**Status: local policy texts remain review artifacts and are not IAM-validated or approved for attachment or implementation. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md); the networking candidate was updated 2026-10-24 from its review-only fragments.**
 
 These complete JSON documents make the current draft structure easy to review and measure. The source fragments remain in the package; if they change, regenerate and recheck these assembled copies. JSON parsing and size checks do not prove that AWS IAM accepts the policies, that the permissions are sufficient or least-privilege, or that provider calls match them.
 
-The durable document is an assembly of the 14-statement option-B reconstruction, the deploy-role trust deny, and the two ephemeral-state statements. It is not the unrecovered original 14-statement policy. The author reports attaching an AWS inline policy named `p3-terraform-durable` and reading back a count of 17 statements. The candidate's Sid list was reported before saving, not repeated in the saved-policy read-back; the saved AWS JSON was not compared line by line, so this file is not a confirmed copy of the live policy. Networking and compute permissions wait until the ephemeral stage. Keeping those drafts as separate managed policies remains a proposal, and no later attachment is approved. `<ACCOUNT_ID>` remains a placeholder. No account ID or `p3-state-bucket` policy text is included. See the [new-account design decision](../decisions/new-account-deployment-design.md) for the sequence and rationale.
+The durable document is an assembly of the 14-statement option-B reconstruction, the deploy-role trust deny, and the two ephemeral-state statements. It is not the unrecovered original 14-statement policy. The author reports attaching an AWS inline policy named `p3-terraform-durable` and reading back a count of 17 statements. The candidate's Sid list was reported before saving, not repeated in the saved-policy read-back; the saved AWS JSON was not compared line by line, so this file is not a confirmed copy of the live policy. Networking and compute permissions remain review-only candidates for the ephemeral stage. Keeping those drafts as separate managed policies remains a proposal, and no attachment is approved. `<ACCOUNT_ID>` remains a placeholder. No account ID or `p3-state-bucket` policy text is included. See the [new-account design decision](../decisions/new-account-deployment-design.md) for the sequence and rationale.
 
 Measurements below exclude whitespace, matching the documented AWS policy character-count method. The 6,450-character aggregate is the assembled durable document (4,970) plus the separately measured existing `p3-state-bucket` inline policy (1,480); only the first document is reproduced here. AWS documentation reports a 10,240-character aggregate inline-policy limit and 6,144 per customer-managed policy. These are documented defaults, not confirmation of this account’s effective Service Quotas.
 
@@ -252,7 +252,7 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
 
 ## Networking customer-managed policy proposal
 
-10 statements; 4,295 compact characters.
+12 statements; 4,757 compact characters (whitespace excluded; measured 2026-10-24).
 
 ```json
 {
@@ -434,6 +434,28 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
       "Condition": {
         "StringEquals": {
           "ec2:ResourceTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralSecurityGroupRuleEgressCreate",
+      "Effect": "Allow",
+      "Action": "ec2:AuthorizeSecurityGroupEgress",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "p3-vprofile"
+        }
+      }
+    },
+    {
+      "Sid": "EphemeralTagSgRule",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "p3-vprofile"
         }
       }
     },

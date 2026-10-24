@@ -1004,18 +1004,25 @@ Exact copy of deploy permission policy v1 (8 statements). `<ACCOUNT_ID>` remains
 
 ## 2026-10-23 ephemeral-layer permissions (review-only, planning)
 
-Drafted from memory. Author-supplied AWS service-reference JSON outputs dated 2026-10-23 report checks of EC2 action/resource/condition support for the networking and compute fragments and selected IAM/SSM action shapes. The S3 state/lock statements were not checked, and none of the drafts was tested in AWS or against Terraform provider calls. No statement here is active or applied. `<ACCOUNT_ID>` is a placeholder. The [assembled candidates](new-account-assembled-iam-policy-candidates.md) wrap these source fragments into complete JSON documents; the networking and compute split remains a proposal.
+Drafted from memory. Author-supplied AWS service-reference JSON outputs dated 2026-10-23 and 2026-10-24 report checks of EC2 action/resource/condition support for the networking and compute fragments and selected IAM/SSM action shapes. The S3 state/lock statements were not checked, and none of the drafts was tested in AWS or against Terraform provider calls. No statement here is active or applied. `<ACCOUNT_ID>` is a placeholder. The [assembled candidates](new-account-assembled-iam-policy-candidates.md) wrap these source fragments into complete JSON documents; the networking and compute split remains a proposal.
 
 Proposed structure (not separately approved): if selected, networking and compute statements would go in separate customer-managed policies attached by root, and the two state statements would go in the durable inline policy. See the linked candidate file for the complete documents and measurements.
 
 Remaining validation points (review-only; the service reference describes IAM support, not actual AWS or provider behavior):
 - The two S3 state/lock statements, including the `.tflock` object name, were not checked against the Terraform S3 backend documentation.
-- Terraform's actual API calls and tag timing are unknown. In `RunInstances`, the instance, volume, and network interface each need the `Project` request tag; whether the provider supplies all three in the same call is unverified. Security-group-rule tagging is also unverified.
+- Terraform's actual API calls and tag timing are unknown. In `RunInstances`, the instance, volume, and network interface each need the `Project` request tag; whether the provider supplies all three in the same call is unverified. The 2026-10-24 local-reference output lists `security-group-rule` for `AuthorizeSecurityGroupEgress` and `CreateTags`, but whether the provider sends rule tags remains unverified.
 - `ModifyInstanceAttribute` supports instance, security-group, and volume resources; the draft grants only the instance. Whether the planned configuration needs the other two resource types is unknown. The `RunInstances` reference lists resource types beyond the draft's current scopes, including key-pair, launch-template, placement-group, spot-request, and group rows. These are examples, not a complete list; which resource rows the planned request requires is unknown, so do not add grants until the request shape is established.
 - The public SSM parameter ARN pattern is reported, but its account segment remains unverified. The `ec2:Owner` condition key is supported for image authorization, but the Canonical owner value has only second-hand support and remains a placeholder under the public account-ID safeguard.
+- Author-supplied local-reference output dated 2026-10-24 reports `ModifyInstanceCreditSpecification` with the `instance` resource, `ec2:Owner` on the `RunInstances` image row, and no `DescribeInstanceTypeOfferings` entry. These results describe the local reference snapshot; the provider's required calls and whether to use an offering data source remain unresolved.
 - `iam:PassRole` is scoped to the instance-role ARN, and the IAM reference output lists role as its resource type and `iam:PassedToService`/`iam:AssociatedResourceArn` as supported keys. Which PassRole check the provider invokes, and whether a service condition should be used for that call path, remain unresolved.
 - `iam:ListInstanceProfileTags` is not in `ManageInstanceProfile`; add it only if provider evidence shows it is needed. The option-B draft already places `iam:ListInstanceProfilesForRole` in a separate role-scoped statement, so no resource-scope edit is indicated.
 - The default EBS key in `us-east-1` and the account's effective Service Quotas remain unchecked. No ingress permission is granted on purpose.
+
+### 2026-10-24 security-group-rule statements (review-only; author-confirmed)
+
+The author agreed to add `EphemeralSecurityGroupRuleEgressCreate` and `EphemeralTagSgRule` to the networking draft. Author-supplied local service-reference output lists `security-group-rule` for both `AuthorizeSecurityGroupEgress` and `CreateTags`, with request-tag condition-key support. This confirms the listed resource and condition-key shapes in that local reference snapshot; it does not establish provider tag timing, effective permissions, or AWS acceptance.
+
+`EphemeralSecurityGroupRuleEgressCreate` requires the request tag `Project = p3-vprofile`. `EphemeralTagSgRule` uses the same request-tag condition and intentionally omits `ec2:CreateAction`. The omitted condition means the statement may also tag an existing security-group rule. It also does not constrain `aws:TagKeys`, so additional tag keys in a request containing the required Project tag are not excluded. The author accepted the no-`CreateAction` draft for review; that wider tag scope still needs consideration before any separate Gate A approval. The statements remain unattached and untested.
 
 ### Ephemeral state statements (for the durable inline policy)
 
@@ -1212,6 +1219,24 @@ Remaining validation points (review-only; the service reference describes IAM su
       "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*",
       "Condition": {
         "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralSecurityGroupRuleEgressCreate",
+      "Effect": "Allow",
+      "Action": "ec2:AuthorizeSecurityGroupEgress",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
+      "Condition": {
+        "StringEquals": { "aws:RequestTag/Project": "p3-vprofile" }
+      }
+    },
+    {
+      "Sid": "EphemeralTagSgRule",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group-rule/*",
+      "Condition": {
+        "StringEquals": { "aws:RequestTag/Project": "p3-vprofile" }
       }
     },
     {
