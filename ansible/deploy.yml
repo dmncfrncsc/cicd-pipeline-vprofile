@@ -1,0 +1,177 @@
+---
+# Project 3 deploy playbook (draft, not yet run).
+# Required variables, passed by the workflow, never stored in Git:
+#   war_path     path of the WAR on the runner (current build or a prior version for rollback)
+#   db_password  database password (GitHub Environment secret)
+#   rmq_password RabbitMQ password (GitHub Environment secret)
+# Pinned collections: ansible.mysql 5.2.0 (fallback: community.mysql 5.0.2).
+- name: Deploy VProfile on the single host
+  hosts: all
+  become: true
+  vars:
+    app_dir: /var/lib/tomcat10/webapps/ROOT
+    props: /var/lib/tomcat10/webapps/ROOT/WEB-INF/classes/application.properties
+    sql_file: /var/lib/tomcat10/webapps/ROOT/WEB-INF/classes/accountsdb.sql
+    db_socket: /run/mysqld/mysqld.sock
+  tasks:
+    # --- Hosts and packages ---
+    - name: Map app service names to loopback
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} VPROFILE SERVICE NAMES"
+        block: |
+          127.0.0.1 db01 mc01 rmq01
+
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - openjdk-17-jdk-headless
+          - tomcat10
+          - mariadb-server
+          - memcached
+          - rabbitmq-server
+          - python3-pymysql
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # --- Data services ---
+    - name: Start and enable data services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - mariadb
+        - memcached
+        - rabbitmq-server
+
+    - name: Create the accounts database
+      ansible.mysql.mysql_db:
+        name: accounts
+        state: present
+        login_unix_socket: "{{ db_socket }}"
+
+    - name: Create the database user
+      ansible.mysql.mysql_user:
+        name: admin
+        password: "{{ db_password }}"
+        host: localhost
+        priv: "accounts.*:ALL"
+        state: present
+        login_unix_socket: "{{ db_socket }}"
+      no_log: true
+
+    - name: Create the RabbitMQ user
+      community.rabbitmq.rabbitmq_user:
+        user: test
+        password: "{{ rmq_password }}"
+        permissions:
+          - vhost: /
+            configure_priv: .*
+            read_priv: .*
+            write_priv: .*
+        state: present
+      no_log: true
+
+    # --- App deploy ---
+    - name: Stop Tomcat
+      ansible.builtin.service:
+        name: tomcat10
+        state: stopped
+
+    - name: Remove the previous app
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: absent
+
+    - name: Create the app folder
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: tomcat
+        group: tomcat
+
+    - name: Copy the WAR to the host
+      ansible.builtin.copy:
+        src: "{{ war_path }}"
+        dest: /tmp/app.war
+        mode: "0600"
+
+    - name: Unpack the WAR as the ROOT app
+      ansible.builtin.unarchive:
+        src: /tmp/app.war
+        dest: "{{ app_dir }}"
+        remote_src: true
+        owner: tomcat
+        group: tomcat
+
+    - name: Set the database password
+      ansible.builtin.lineinfile:
+        path: "{{ props }}"
+        regexp: '^jdbc\.password='
+        line: "jdbc.password={{ db_password }}"
+      no_log: true
+
+    - name: Set the RabbitMQ password
+      ansible.builtin.lineinfile:
+        path: "{{ props }}"
+        regexp: '^rabbitmq\.password='
+        line: "rabbitmq.password={{ rmq_password }}"
+      no_log: true
+
+    # --- Schema, loaded once (the SQL file starts with DROP TABLE IF EXISTS) ---
+    - name: Check whether the schema is already loaded
+      ansible.mysql.mysql_query:
+        login_db: accounts
+        login_unix_socket: "{{ db_socket }}"
+        query: "SHOW TABLES LIKE 'user'"
+      register: schema_check
+      changed_when: false
+
+    - name: Load the schema and seed data once
+      ansible.mysql.mysql_db:
+        name: accounts
+        state: import
+        target: "{{ sql_file }}"
+        login_unix_socket: "{{ db_socket }}"
+      when: schema_check.rowcount[0] == 0
+
+    - name: Start Tomcat
+      ansible.builtin.service:
+        name: tomcat10
+        state: started
+        enabled: true
+
+    - name: Remove the temporary WAR
+      ansible.builtin.file:
+        path: /tmp/app.war
+        state: absent
+
+    # --- Health checks ---
+    - name: Layer 1 - services are active
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop:
+        - mariadb
+        - memcached
+        - rabbitmq-server
+        - tomcat10
+      changed_when: false
+
+    - name: Layer 2 - app answers
+      ansible.builtin.uri:
+        url: http://localhost:8080/
+        status_code: [200, 302]
+        follow_redirects: none
+      register: app_check
+      retries: 12
+      delay: 10
+      until: app_check.status in [200, 302]
+
+    - name: Layer 3 - database page loads
+      ansible.builtin.uri:
+        url: http://localhost:8080/users
+        status_code: [200, 302]
+        follow_redirects: none
+      retries: 3
+      delay: 10
