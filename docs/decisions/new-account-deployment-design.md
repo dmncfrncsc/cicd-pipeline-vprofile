@@ -62,9 +62,7 @@ The local durable candidate includes `iam:PassRole` only on `p3-vprofile-instanc
 
 The owner checklist was approved for planning, and its initial owner-session step was later separately authorized and reported executed. That one-session approval does not extend to another owner session, the first Terraform code or plan, session 2, implementation, or spending. The remaining sequence is a separately approved Terraform change limited to the two durable buckets, a later owner session to apply and read back the HTTPS-only policies before either bucket is used, and owner-led teardown. The Terraform design, IAM drafts, cost assumptions, and implementation still need review. Each Terraform PR needs its own plan review and apply approval.
 
-## Interview explanation
-
-"For the new account, I planned separate Terraform states for long-lived deployment resources and the short-lived application stack, so a session teardown would not remove the buckets or IAM setup. In an approved owner session, I created the two named permissions-boundary policies and attached a durable inline policy to `p3-terraform`; the console accepted the JSON, but I have not proved the effective permissions or compared the saved text line by line. The application infrastructure is still only a plan, and I have not started Terraform implementation."
+For a plain-language summary and current-stage interview practice answer, see [NOTES.md](../../NOTES.md#current-stage-interview-practice-answer-draft-2026-10-24). This record keeps the design rationale, status, and supporting evidence.
 
 ## Update 2026-10-23 — deploy-role trust, runner connection, and p3-terraform scope (review only)
 
@@ -105,10 +103,6 @@ The deploy role must be usable by GitHub Actions runs from `main` only, and pull
 - **Unverified:** whether `SSM-SessionManagerRunShell` exists in the new account and is used by the selected plugin configuration; the exact match between the workflow’s chosen role-session name and the `${aws:userid}` session ARN pattern; instance behavior without `ssm:GetParameter(s)`; the project’s selected `amazon.aws` collection version/configuration and end-to-end transfer; `curl` and network access on the proposed instance image; the account’s effective Service Quotas and whether permissions boundaries count toward the managed-policy quota; Terraform provider calls/tag timing; and the two S3 state/lock statements. Current text-size measurements are recorded below and in the [assembled candidates](../drafts/new-account-assembled-iam-policy-candidates.md); they do not validate IAM semantics or effective permissions.
 - **Reported setting:** the author-supplied repository screenshot shows immutable subject claims enabled. The CLI result separately confirms the configured prefix as reported above.
 - **Textually reviewed on 2026-10-23:** the durable-policy statements for role creation, pass-role, instance profile and boundary reads. This checked naming and consistency in the saved draft, not AWS-required actions, conditions, or effective permissions; see [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md).
-
-### Interview answer (based on work actually done)
-
-"I designed, but have not yet deployed, the IAM for a GitHub Actions deployment role. I found that my repository uses immutable OIDC subject claims, so my first trust draft would never have matched. I chose a GitHub Environment restricted to `main`, and I noticed that a permissions boundary limits what a role can do but not who can assume it. That meant the Terraform role could rewrite the deploy role's trust by editing or by deleting and recreating it, so I planned an explicit deny that only a root-attached policy can remove. Everything is still a reviewed draft, with the unverified parts listed."
 
 ## 2026-10-23 — Ansible transfer bucket stays unversioned (planning only)
 
