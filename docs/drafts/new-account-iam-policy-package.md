@@ -702,6 +702,8 @@ This earlier review-only draft included four additional unverified claim conditi
 
 ### Deploy-role permission policy v1 (assumes the `aws_ssm` plugin)
 
+**Planning-only update (2026-10-24):** The author-confirmed edits below narrow this permission-policy draft; the deploy boundary remains unchanged and broader by design. This permission policy is not applied or IAM-validated. The transfer-key pattern, session-name match, session-document availability, and whether the WAR workflow needs `s3:GetBucketLocation` remain first-test questions. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [NOTES.md](../../NOTES.md) for rationale and evidence limits.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -715,14 +717,14 @@ This earlier review-only draft included four additional unverified claim conditi
     {
       "Sid": "WarBucketList",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket", "s3:ListBucketVersions", "s3:GetBucketLocation"],
+      "Action": ["s3:ListBucket", "s3:ListBucketVersions"],
       "Resource": "arn:aws:s3:::p3-vprofile-war-k7m3q9"
     },
     {
       "Sid": "TransferBucketObjects",
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9/*"
+      "Resource": "arn:aws:s3:::p3-vprofile-ansible-transfer-k7m3q9/i-*/*"
     },
     {
       "Sid": "TransferBucketList",
@@ -753,7 +755,7 @@ This earlier review-only draft included four additional unverified claim conditi
         "ssm:TerminateSession",
         "ssm:ResumeSession"
       ],
-      "Resource": "arn:aws:ssm:*:*:session/${aws:userid}-*"
+      "Resource": "arn:aws:ssm:us-east-1:<ACCOUNT_ID>:session/${aws:userid}-*"
     },
     {
       "Sid": "SessionReadOnly",
@@ -764,7 +766,12 @@ This earlier review-only draft included four additional unverified claim conditi
         "ssm:DescribeInstanceProperties",
         "ec2:DescribeInstances"
       ],
-      "Resource": "*"
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
     }
   ]
 }
@@ -772,7 +779,7 @@ This earlier review-only draft included four additional unverified claim conditi
 
 ### Current deploy-role trust draft (2026-10-24; audience and subject only)
 
-**Status:** Review-only planning draft based on the author's 2026-10-24 choice. It is not applied, and the deploy-role permission policy remains unreviewed. The future deployment job must declare `environment: production` and `permissions: id-token: write`; no other job should declare either. AWS trust does not enforce `main`; it relies on the GitHub Environment branch rule, for which administrator bypass remains enabled. The checker printed `sub` but did not separately display `aud`.
+**Status:** Review-only planning draft based on the author's 2026-10-24 choice. It is not applied. The deploy-role permission policy has since received planning-only edits below; its behavior and sufficiency remain untested. The future deployment job must declare `environment: production` and `permissions: id-token: write`; no other job should declare either. AWS trust does not enforce `main`; it relies on the GitHub Environment branch rule, for which administrator bypass remains enabled. The checker printed `sub` but did not separately display `aud`.
 
 ```json
 {
