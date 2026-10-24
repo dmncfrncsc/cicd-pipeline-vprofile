@@ -64,7 +64,7 @@ jobs:
 
       - name: Install the Session Manager plugin
         run: |
-          curl -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "$RUNNER_TEMP/ssm-plugin.deb"
+          curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "$RUNNER_TEMP/ssm-plugin.deb"
           sudo dpkg -i "$RUNNER_TEMP/ssm-plugin.deb"
 
       - name: Install Ansible and collections
