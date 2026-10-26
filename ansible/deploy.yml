@@ -170,9 +170,26 @@
       until: app_check.status in [200, 302]
 
     - name: Layer 3 - database page loads
-      ansible.builtin.uri:
-        url: http://localhost:8080/users
-        status_code: [200, 302]
-        follow_redirects: none
-      retries: 3
-      delay: 10
+      block:
+        - name: Layer 3 - request /users
+          ansible.builtin.uri:
+            url: http://localhost:8080/users
+            status_code: [200, 302]
+            follow_redirects: none
+          retries: 3
+          delay: 10
+      rescue:
+        - name: Collect Tomcat error lines
+          ansible.builtin.shell: |
+            journalctl -u tomcat10 -n 400 --no-pager | grep -E "Exception|Caused by|ERROR|SEVERE" | tail -n 40
+          register: tomcat_errors
+          changed_when: false
+          failed_when: false
+
+        - name: Show Tomcat error lines
+          ansible.builtin.debug:
+            var: tomcat_errors.stdout_lines
+
+        - name: Fail the deploy
+          ansible.builtin.fail:
+            msg: "/users returned an error. See the Tomcat error lines above."
