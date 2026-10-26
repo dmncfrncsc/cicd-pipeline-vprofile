@@ -706,7 +706,7 @@ This earlier review-only draft included four additional unverified claim conditi
 
 ### Deploy-role permission policy v1 (assumes the `aws_ssm` plugin)
 
-**Planning-only update (2026-10-24):** The author-confirmed edits below narrow this permission-policy draft; the deploy boundary remains unchanged and broader by design. This permission policy is not applied or IAM-validated. The transfer-key pattern, session-name match, session-document availability, and whether the WAR workflow needs `s3:GetBucketLocation` remain first-test questions. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [NOTES.md](../../NOTES.md) for rationale and evidence limits.
+**Planning-only review copy (2026-10-24; status update 2026-10-26):** The author-confirmed edits below narrow this local permission-policy draft; it is not a complete saved-policy read-back. The author reports that the Terraform-managed `aws_iam_role_policy.deploy` correction to the `session/p3-deploy-*` pattern was applied from a reviewed plan (0 additions, 1 change, 0 destroys), and a later plan reported no changes. The complete live policy and effective permissions remain unchecked, and no successful SSM session verifies the fix. The transfer-key pattern, session-document availability, and whether the WAR workflow needs `s3:GetBucketLocation` remain first-test questions. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [NOTES.md](../../NOTES.md) for rationale and evidence limits.
 
 ```json
 {
