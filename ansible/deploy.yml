@@ -11,7 +11,7 @@
   vars:
     app_dir: /var/lib/tomcat10/webapps/ROOT
     props: /var/lib/tomcat10/webapps/ROOT/WEB-INF/classes/application.properties
-    sql_file: /var/lib/tomcat10/webapps/ROOT/WEB-INF/classes/accountsdb.sql
+    sql_file: /var/lib/tomcat10/webapps/ROOT/WEB-INF/classes/db_backup.sql
     db_socket: /run/mysqld/mysqld.sock
   tasks:
     # --- Hosts and packages ---
@@ -121,12 +121,12 @@
         line: "rabbitmq.password={{ rmq_password }}"
       no_log: true
 
-    # --- Schema, loaded once (the SQL file starts with DROP TABLE IF EXISTS) ---
+    # --- Schema, loaded until the user table has the dateOfBirth column (the SQL file starts with DROP TABLE IF EXISTS) ---
     - name: Check whether the schema is already loaded
       ansible.mysql.mysql_query:
         login_db: accounts
         login_unix_socket: "{{ db_socket }}"
-        query: "SHOW TABLES LIKE 'user'"
+        query: "SELECT column_name FROM information_schema.columns WHERE table_schema='accounts' AND table_name='user' AND column_name='dateOfBirth'"
       register: schema_check
       changed_when: false
 
