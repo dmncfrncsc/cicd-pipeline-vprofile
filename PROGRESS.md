@@ -1,28 +1,30 @@
 # Project 3 session handoff
 
-**Updated 2026-10-26.** This handoff combines local Git state and the supplied continuation transcript; AWS and GitHub were not checked live. Deploy #5 was reported successful and followed by teardown. The first rollback-test deploy stopped before the app, so rollback remains untested. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for evidence and limits.
+**Updated 2026-10-26.** Local Git is at PR #101 merge `512c46a`; the shared conversation reports the reviewed IAM policy change applied and a follow-up plan with no changes. No live AWS or GitHub service was checked for this update. The rollback sequence remains untested. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for evidence and limits.
 
 ## Objective and current phase
 
 Project 3 builds and tests the instructor-provided VProfile application, then adds a CI/CD path to an approved AWS target. The repository owner did not author VProfile, and source-use permission remains unresolved.
 
-**Active phase:** obtain separate approval for the reviewed PR #97 policy plan, then validate deployment and rollback. The plan has not been applied.
+**Active phase:** complete authorization review for the proposed three-dispatch rollback run. The one-run planning estimate was accepted with an 8-hour proposed limit; that acceptance does not authorize provisioning or a workflow run.
 
 ## Current status
 
-**Repository:** Local Git shows `main` and `origin/main` at `7acc854` (PR #100 merge). Top-level status was clean with the inaccessible submodule ignored; its status was not checked. No live GitHub check was made.
+**Repository:** Local Git shows `main` and `origin/main` at `512c46a` (PR #101 merge). The top-level worktree is clean when the inaccessible submodule is excluded; the submodule status was not checked. No live GitHub check was made.
 
 **Deployment:** Deploy #5 on `4d8c178` was reported green and followed by teardown. The later Deploy 1 failed at `ssm:TerminateSession` before the app, so rollback did not run. Login, a real user session, and search behavior remain unverified.
 
-**IAM repair and plan (author-reported):** The owner session ended with root sign-out. `p3-terraform-networking` is reported at Version 3, default and attached to `p3-terraform`; the saved-statement read-back showed `ec2:DisassociateAddress` once and `network-interface/*` as the eighth resource. The `p3-vprofile-deploy` role page was reported to show its boundary set. An earlier read-back reported boundary Version 2 as default; the latest screenshot did not show its default version. In WSL, the author reports `p3-new`, `assumed-role/p3-terraform`, and a private account match in the same shell. The saved `deploy-policy.tfplan` from `7acc854` reported 0 add, 1 change, 0 destroy; its reviewed diff changes only the `Resource` value in `aws_iam_role_policy.deploy` to `session/p3-deploy-*`. It has not been applied; the initial role/policy creation was reported separately.
+**IAM repair and plan (author-reported):** The owner session ended with root sign-out. `p3-terraform-networking` is reported at Version 3, default and attached to `p3-terraform`; a selected read-back showed `ec2:DisassociateAddress` and the network-interface resource. The deploy role's boundary was reported set, but its current default version is unknown. A fresh `p3-new` MFA session produced an ARN ending `assumed-role/p3-terraform`; this conversation does not record a private account match after that reload. The saved `deploy-policy.tfplan` reported 0 additions, 1 change, 0 destroys and changed the `Resource` value in `aws_iam_role_policy.deploy` to `session/p3-deploy-*`. The author reports approving and applying it; Terraform reported 0 added, 1 changed, 0 destroyed. A later `terraform plan` reported no changes. This does not verify a successful SSM session or rollback.
 
-**Open follow-up:** The NAT network-interface `Project=p3-vprofile` tag condition is untested, so the next teardown may still deny disassociation. Checking runs #1–#3 for account-ID output is low priority; Deploy #6 deletion was reported. Jenkins/J1-vs-J2, billing/credits, and source-use permission remain open. The latest WSL report shows temporary AWS credentials loaded; no subsequent unset was reported.
+**Open follow-up:** The NAT network-interface `Project=p3-vprofile` tag condition is untested, so teardown may still need recovery. Checking runs #1–#3 for account-ID output is low priority; Deploy #6 deletion was reported. Jenkins/J1-vs-J2, billing/credits, and source-use permission remain open. The latest WSL transcript reports clearing exported AWS variables with a final count of 0; this is shell-scoped, not a live credential check.
+
+**Rollback cost review (author-accepted estimate):** The author accepted the existing planning estimate for one proposed run with an 8-hour time limit. This is not current pricing, a guaranteed dollar cap, or authorization to provision or dispatch. Credit coverage, the N. Virginia NAT rate, and package-site connectivity remain unknown.
 
 **Other recorded risks:** Terraform state serial/lineage differs from the preserved backup; full saved IAM policies and effective permissions remain unchecked; some Sonar findings are accepted rather than fixed; prior-account resources and charges are unknown, with cleanup deferred. Detailed evidence, caveats, and decisions are in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md), [NOTES.md](NOTES.md), and the [design record](docs/decisions/new-account-deployment-design.md). The cost gate used planning estimates only; no billing/credit check or monthly budget is recorded.
 
 ## Next safe step
 
-The reviewed `deploy-policy.tfplan` has not been applied because separate approval is still required. Before applying, confirm approval, recheck `assumed-role/p3-terraform` and the account in the same WSL shell, and ensure the saved plan still matches the current state; if it may be stale, create and review a fresh plan first. If stopping before apply, clear the exported AWS variables as described in [NOTES.md](NOTES.md). After the permission update, review authorization for another deployment, then run the three-dispatch rollback sequence on a fresh host and verify teardown. Jenkins follows rollback verification.
+Get the exact workflow-dispatch inputs and three-run sequence, including what each dispatch is meant to prove, to finish the authorization review. Before any Terraform command, use a fresh `p3-new` session in the same WSL shell and verify the role and intended account privately. A separate approval is required before provisioning or dispatch. If authorized, define who watches the proposed 8-hour window and check the actual remaining resources after teardown; the time limit alone cannot stop billing. Jenkins follows successful rollback verification.
 
 ## Safety boundaries
 
