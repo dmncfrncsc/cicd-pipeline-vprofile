@@ -218,6 +218,11 @@
           ansible.builtin.debug:
             msg: "users in accounts.user: {{ user_count.query_result[0][0].users }}"
 
+        - name: Test switch - fail on purpose to exercise the rollback
+          ansible.builtin.fail:
+            msg: "force_failure is on. Failing on purpose to test the rollback."
+          when: force_failure | default(false) | bool
+
       rescue:
         - name: Roll back - look for the saved app
           ansible.builtin.stat:
