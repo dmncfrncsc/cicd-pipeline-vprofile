@@ -85,8 +85,7 @@ resource "aws_iam_role_policy" "deploy" {
           "ssm:TerminateSession",
           "ssm:ResumeSession",
         ]
-        # $${ is how Terraform writes a literal ${ that IAM, not Terraform, fills in.
-        Resource = "arn:aws:ssm:us-east-1:${local.account_id}:session/$${aws:userid}-*"
+        Resource = "arn:aws:ssm:us-east-1:${local.account_id}:session/p3-deploy-*"
       },
       {
         Sid    = "SessionReadOnly"
