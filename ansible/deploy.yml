@@ -193,3 +193,16 @@
         - name: Fail the deploy
           ansible.builtin.fail:
             msg: "/users returned an error. See the Tomcat error lines above."
+
+    - name: Layer 4 - accounts database has users
+      ansible.mysql.mysql_query:
+        login_db: accounts
+        login_unix_socket: "{{ db_socket }}"
+        query: "SELECT COUNT(*) AS users FROM `user`"
+      register: user_count
+      changed_when: false
+      failed_when: user_count.query_result[0][0].users | int == 0
+
+    - name: Show the user count
+      ansible.builtin.debug:
+        msg: "users in accounts.user: {{ user_count.query_result[0][0].users }}"
