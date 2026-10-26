@@ -81,6 +81,15 @@
         name: tomcat10
         state: stopped
 
+    - name: Look for a running app to back up
+      ansible.builtin.stat:
+        path: "{{ app_dir }}"
+      register: current_app
+
+    - name: Save the current app as the rollback copy
+      ansible.builtin.shell: rm -rf /opt/vprofile-prev && cp -a "{{ app_dir }}" /opt/vprofile-prev
+      when: current_app.stat.exists
+
     - name: Remove the previous app
       ansible.builtin.file:
         path: "{{ app_dir }}"
@@ -138,71 +147,115 @@
         login_unix_socket: "{{ db_socket }}"
       when: schema_check.rowcount[0] == 0
 
-    - name: Start Tomcat
-      ansible.builtin.service:
-        name: tomcat10
-        state: started
-        enabled: true
-
-    - name: Remove the temporary WAR
-      ansible.builtin.file:
-        path: /tmp/app.war
-        state: absent
-
-    # --- Health checks ---
-    - name: Layer 1 - services are active
-      ansible.builtin.command: "systemctl is-active {{ item }}"
-      loop:
-        - mariadb
-        - memcached
-        - rabbitmq-server
-        - tomcat10
-      changed_when: false
-
-    - name: Layer 2 - app answers
-      ansible.builtin.uri:
-        url: http://localhost:8080/
-        status_code: [200, 302]
-        follow_redirects: none
-      register: app_check
-      retries: 12
-      delay: 10
-      until: app_check.status in [200, 302]
-
-    - name: Layer 3 - database page loads
+    - name: Start Tomcat and run the health checks, roll back on failure
       block:
-        - name: Layer 3 - request /users
+        - name: Start Tomcat
+          ansible.builtin.service:
+            name: tomcat10
+            state: started
+            enabled: true
+
+        - name: Remove the temporary WAR
+          ansible.builtin.file:
+            path: /tmp/app.war
+            state: absent
+
+        # --- Health checks ---
+        - name: Layer 1 - services are active
+          ansible.builtin.command: "systemctl is-active {{ item }}"
+          loop:
+            - mariadb
+            - memcached
+            - rabbitmq-server
+            - tomcat10
+          changed_when: false
+
+        - name: Layer 2 - app answers
           ansible.builtin.uri:
-            url: http://localhost:8080/users
+            url: http://localhost:8080/
             status_code: [200, 302]
             follow_redirects: none
-          retries: 3
+          register: app_check
+          retries: 12
           delay: 10
-      rescue:
-        - name: Collect Tomcat error lines
-          ansible.builtin.shell: |
-            journalctl -u tomcat10 -n 400 --no-pager | grep -E "Exception|Caused by|ERROR|SEVERE" | tail -n 40
-          register: tomcat_errors
+          until: app_check.status in [200, 302]
+
+        - name: Layer 3 - database page loads
+          block:
+            - name: Layer 3 - request /users
+              ansible.builtin.uri:
+                url: http://localhost:8080/users
+                status_code: [200, 302]
+                follow_redirects: none
+              retries: 3
+              delay: 10
+          rescue:
+            - name: Collect Tomcat error lines
+              ansible.builtin.shell: |
+                journalctl -u tomcat10 -n 400 --no-pager | grep -E "Exception|Caused by|ERROR|SEVERE" | tail -n 40
+              register: tomcat_errors
+              changed_when: false
+              failed_when: false
+
+            - name: Show Tomcat error lines
+              ansible.builtin.debug:
+                var: tomcat_errors.stdout_lines
+
+            - name: Fail the deploy
+              ansible.builtin.fail:
+                msg: "/users returned an error. See the Tomcat error lines above."
+
+        - name: Layer 4 - accounts database has users
+          ansible.mysql.mysql_query:
+            login_db: accounts
+            login_unix_socket: "{{ db_socket }}"
+            query: "SELECT COUNT(*) AS users FROM `user`"
+          register: user_count
           changed_when: false
-          failed_when: false
+          failed_when: user_count.query_result[0][0].users | int == 0
 
-        - name: Show Tomcat error lines
+        - name: Show the user count
           ansible.builtin.debug:
-            var: tomcat_errors.stdout_lines
+            msg: "users in accounts.user: {{ user_count.query_result[0][0].users }}"
 
-        - name: Fail the deploy
+      rescue:
+        - name: Roll back - look for the saved app
+          ansible.builtin.stat:
+            path: /opt/vprofile-prev
+          register: prev_app
+
+        - name: Roll back - restore the saved app
+          when: prev_app.stat.exists
+          block:
+            - name: Roll back - stop Tomcat
+              ansible.builtin.service:
+                name: tomcat10
+                state: stopped
+
+            - name: Roll back - replace the broken app
+              ansible.builtin.shell: rm -rf "{{ app_dir }}" && cp -a /opt/vprofile-prev "{{ app_dir }}"
+
+            - name: Roll back - start Tomcat
+              ansible.builtin.service:
+                name: tomcat10
+                state: started
+
+            - name: Roll back - confirm the old app answers
+              ansible.builtin.uri:
+                url: http://localhost:8080/
+                status_code: [200, 302]
+                follow_redirects: none
+              register: rollback_check
+              retries: 12
+              delay: 10
+              until: rollback_check.status in [200, 302]
+
+        - name: Fail the deploy after a rollback
           ansible.builtin.fail:
-            msg: "/users returned an error. See the Tomcat error lines above."
+            msg: "Health checks failed. The previous app was restored and answers on /."
+          when: prev_app.stat.exists
 
-    - name: Layer 4 - accounts database has users
-      ansible.mysql.mysql_query:
-        login_db: accounts
-        login_unix_socket: "{{ db_socket }}"
-        query: "SELECT COUNT(*) AS users FROM `user`"
-      register: user_count
-      changed_when: false
-      failed_when: user_count.query_result[0][0].users | int == 0
-
-    - name: Show the user count
-      ansible.builtin.debug:
-        msg: "users in accounts.user: {{ user_count.query_result[0][0].users }}"
+        - name: Fail the deploy with nothing to roll back to
+          ansible.builtin.fail:
+            msg: "Health checks failed. No saved app exists, so nothing was restored."
+          when: not prev_app.stat.exists
