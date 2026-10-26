@@ -608,7 +608,7 @@ A role has two separate policies. The permission policy says what the role may d
 
 ### A permissions boundary limits permissions, not trust
 
-A boundary caps what a role can ever do, but it does not limit who can be named in the role's trust policy. A principal that can update a role's trust, or delete and recreate the role, can change who may assume it. An explicit Deny overrides any Allow, so a Deny on `iam:UpdateAssumeRolePolicy` and `iam:DeleteRole` closes both paths, provided the policy holding the Deny cannot be edited by the same principal. An MFA challenge controls credential issuance; it does not restrict actions in an issued session. Terraform plan review is procedural and does not block direct API calls. These are explanations of the draft and general IAM behavior, not results of a live permission test.
+A boundary caps a role's permissions but does not grant actions; a needed action must be allowed by both the role's permission policy and its boundary. A boundary also does not limit who can be named in the role's trust policy. A principal that can update a role's trust, or delete and recreate the role, can change who may assume it. An explicit Deny overrides any Allow, so a Deny on `iam:UpdateAssumeRolePolicy` and `iam:DeleteRole` closes both paths, provided the policy holding the Deny cannot be edited by the same principal. An MFA challenge controls credential issuance; it does not restrict actions in an issued session. Terraform plan review is procedural and does not block direct API calls. These are explanations of the draft and general IAM behavior, not results of a live permission test.
 
 ### The aws_ssm connection
 
@@ -696,9 +696,10 @@ See the [workflow](.github/workflows/deploy.yml), [deployment decision checkpoin
 
 See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for the checkpoint evidence and [PROGRESS.md](PROGRESS.md) for the current next step.
 
-## Permission repair and saved-policy read-back (2026-10-26; conversation supplied)
+## IAM boundary and Terraform plan review (2026-10-26; conversation supplied)
 
-- **A permissions boundary must allow the same session ARN as the role policy.** At the time of the failed deployment, the inline policy used `session/p3-deploy-*` while the boundary still had `session/${aws:userid}-*`; that mismatch explained the reported `ssm:TerminateSession` denial. The author reports saving boundary version 2 with the matching prefix and reading back the `OwnSessionsOnly` resource and 8-statement count. This was a selected read-back, not a full JSON comparison or an attachment/effective-permissions check.
-- **A save before the requested pre-save check changes what can be verified.** The author saved the boundary before checking the pasted editor text. The later saved-policy read-back is the available evidence; it confirms only the reported version, count, and selected resource line. Read-back, attachment checks, and effective-permission tests are separate evidence. The networking policy console update was still at its pre-save check in the supplied continuation.
+- **Both policies must allow the action.** The first deployment failed because the permission policy and boundary had different SSM session resource patterns. The boundary's matching pattern was reported saved and read back; the later PR #97 permission-policy plan was reviewed but not applied. No successful SSM session has verified the fix.
+- **Read the full plan diff, not a keyword-filtered excerpt.** Filtering for only resource headers or `session/` can hide unrelated changes. For the reviewed saved plan, checking all `~`, `+`, and `-` lines together with the plan summary showed one in-place `aws_iam_role_policy.deploy` change and a single changed policy value. The plan remains unapplied.
+- **A save before the requested pre-save check changes what can be verified.** The boundary was saved before the pasted editor text was checked; its later selected read-back confirmed only the reported version, statement count, and resource line. For the networking policy, the author reports Version 3 default, attachment to `p3-terraform`, and a saved-statement read-back containing the new action and eighth resource. Neither selected read-back is a full JSON comparison or an effective-permissions test.
 
-The current owner-session stop point and remaining checks are recorded in [PROGRESS.md](PROGRESS.md) and [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md). The local networking-policy edit reported for `ec2:DisassociateAddress` has not yet been reported saved in AWS.
+The current approval gate and next step are in [PROGRESS.md](PROGRESS.md); detailed author-reported evidence and limits are in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).

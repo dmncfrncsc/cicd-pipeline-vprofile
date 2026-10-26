@@ -460,7 +460,9 @@ This section records the pre-owner-session status from the supplied continuation
 
 See [PROGRESS.md](PROGRESS.md) for the current handoff, [NOTES.md](NOTES.md) for reusable lessons, and the [new-account design decision](docs/decisions/new-account-deployment-design.md) for rollback design status.
 
-## 2026-10-26 — PR #99 sync and IAM permission-repair checkpoint
+## 2026-10-26 — PR #99 sync and IAM permission-repair checkpoint (historical pre-completion stop; superseded below)
+
+This captures the earlier transcript stop before the networking-policy save. The later owner-session completion and plan review are recorded below.
 
 - **Repository:** the supplied terminal transcript reports PR #99 (“update: streamline Project 3 documentation handoff”) merged as `8fa00de`, with two checks and a passed Quality Gate; it also reports deleting the finished branch. Local Git confirms `main` and `origin/main` at `8fa00de`; the top-level worktree was clean when checked with the submodule ignored, before this documentation update. No live GitHub check was made.
 - **Failed-run log:** a screenshot was reported to show deletion of failed Deploy #6 and five remaining runs, starting at #5. Earlier runs #1–#3 have not been checked for account-ID output; this is a low-priority follow-up. No credential exposure was reported. The screenshot was not independently reviewed during this update.
@@ -471,3 +473,12 @@ See [PROGRESS.md](PROGRESS.md) for the current handoff, [NOTES.md](NOTES.md) for
 - **Next steps:** finish that console save and read-back, confirm `p3-terraform-networking` remains attached to `p3-terraform` and `p3-vprofile-deploy-boundary` remains set on `p3-vprofile-deploy`, then sign out. Afterward use the documented `p3-new` flow and verify identity/account privately in the same WSL shell; create and review a fresh plan for the PR #97 deploy-role inline-policy update because the earlier plan may be stale. Applying it needs separate approval. Only then retry deployment and perform the three-dispatch rollback test. The ephemeral stack is reported torn down; billing and credits remain unchecked.
 
 See [PROGRESS.md](PROGRESS.md) for the current handoff, [NOTES.md](NOTES.md) for lessons from the permission repair, and the [new-account design decision](docs/decisions/new-account-deployment-design.md) for the design checkpoint.
+
+## 2026-10-26 — owner session completed and PR #97 plan reviewed (author-reported)
+
+- **Repository:** supplied WSL output reports `main` at `7acc854` after PR #100 and a clean status with the submodule ignored. Local Git confirms `7acc854`; top-level status is clean when the inaccessible submodule is excluded. The submodule status was not checked.
+- **Owner session:** the author reports `p3-terraform-networking` Version 3 became default and is attached to `p3-terraform`. The saved `EphemeralDeleteTaggedNetworkResources` statement read-back included `ec2:DisassociateAddress` once and `network-interface/*` as its eighth resource. The author identified the boundary screenshot as the `p3-vprofile-deploy` role page, which showed `p3-vprofile-deploy-boundary` set. An earlier read-back reported boundary Version 2 as default; the latest screenshot did not show its default version. Root sign-out was reported. These are author-reported console outcomes, not live checks in this documentation update.
+- **Identity and plan:** the author reports loading `p3-new`, seeing `assumed-role/p3-terraform`, and privately matching the account in the same WSL shell. A fresh `deploy-policy.tfplan` from `infra/durable` reported 0 additions, 1 change, and 0 destroys. The complete displayed diff changed only the `Resource` value in `aws_iam_role_policy.deploy` from the `${aws:userid}` session pattern to `session/p3-deploy-*`. The plan has not been applied; the author has not approved its application. The plan file and WSL shell were not inspected locally.
+- **Remaining limits:** the NAT network-interface `Project=p3-vprofile` tag is untested; the next teardown will show whether the resource-tag condition permits disassociation. Temporary AWS variables were loaded for the plan and no later unset was reported. If stopping before the next step, clear them; see [NOTES.md](NOTES.md). Before applying, require separate approval and repeat the same-shell identity/account check. Then review the retry authorization and perform the three-dispatch rollback test. Billing and credits remain unchecked.
+
+See [PROGRESS.md](PROGRESS.md) for the current next step and [NOTES.md](NOTES.md) for the reusable boundary and plan-review lessons.
