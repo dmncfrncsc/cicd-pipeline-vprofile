@@ -12,7 +12,7 @@ In Phase 1, GitHub Actions (GitHub's tool for running automated jobs) gets the p
 
 Use the adopted update guidance together with supplied terminal output, console screenshots, and local files. A summary or claim alone is not independent proof of live AWS state. The progress files distinguish decisions, plans, author-reported actions, and checks. External Project Knowledge copies may lag behind the repository, so use [PROGRESS.md](PROGRESS.md) for the current handoff.
 
-At this handoff, local Git is on `main` at `fa9b670` (PR #97 merge). The supplied continuation reports PRs #89–#97, one successful GitHub Actions deployment, and a later rollback-test attempt that stopped before app deployment; these are not fresh service checks. The repository-side session-policy fix has a plan but no reported apply or saved-policy read-back, and the matching deploy-boundary update remains pending. Rollback remains untested; Jenkins is also required. This notes file preserves reusable lessons and evidence limits; see [PROGRESS.md](PROGRESS.md) for the operational handoff and [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for chronology.
+
 
 For the project's current approvals and next safe step, use [PROGRESS.md](PROGRESS.md). For why the AWS work is staged and what each session covers, use the [new-account design decision](docs/decisions/new-account-deployment-design.md). The preflight's account and metadata limits are recorded in the history. You do not need to learn every IAM or Terraform detail before continuing; ask for one decision or command to be explained at a time in everyday language. These notes are a reference, not a test.
 
