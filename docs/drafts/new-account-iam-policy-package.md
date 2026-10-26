@@ -1,21 +1,23 @@
 # New-account IAM policy draft package
 
-**Status: repository policy texts are review artifacts, not general verified copies of live AWS policies. Updated 2026-10-24.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, the redrafted boundaries, review-only ephemeral state/networking/compute policy statements, and the two durable-bucket HTTPS-only policy drafts. The original reported 14-statement policy was not recovered. In the separately approved 2026-10-23 owner session, the author reports creating AWS policies named `p3-vprofile-deploy-boundary` and `p3-vprofile-instance-boundary` and attaching an inline policy named `p3-terraform-durable` to `p3-terraform`. The boundary names/counts and durable policy name/count were reported; the durable Sid list was supplied before saving, not repeated in its saved-policy read-back. The saved IAM JSON for those objects was not compared line by line with these local files. In the separately approved 2026-10-24 session 2, both bucket-policy saves were reported. The WAR policy's read-back text was reported matching its draft. For transfer, a successful save banner and pasted JSON matching the draft were reported, but the source does not establish whether that JSON came from the editor or a fresh saved-policy read-back. The transfer Block Public Access screenshot description omitted the bucket name. The local policy texts therefore remain review artifacts, not verified snapshots of either live policy. Session 3 creation and attachment of the networking and compute managed policies are author-reported; the full saved JSON was not compared with these local texts. Complete assembled IAM candidates and their measured sizes are in [new-account-assembled-iam-policy-candidates.md](new-account-assembled-iam-policy-candidates.md). These texts do not approve any further AWS change.
+**Status: repository policy texts are review artifacts, not verified copies of complete live AWS policies. Updated 2026-10-26.** This package preserves the 15-statement durable-layer reconstruction, a separate 14-statement option-B reconstruction derived from it, two earlier full boundary drafts marked superseded, the redrafted boundaries, review-only ephemeral state/networking/compute policy statements, and the two durable-bucket HTTPS-only policy drafts. The original reported 14-statement policy was not recovered. In the separately approved 2026-10-23 owner session, the author reports creating `p3-vprofile-deploy-boundary` and `p3-vprofile-instance-boundary` and attaching `p3-terraform-durable` to `p3-terraform`. The saved IAM JSON was not compared line by line with these local files. In the separately approved 2026-10-24 session 2, both bucket-policy saves were reported. The WAR policy's read-back text was reported matching its draft; a fresh saved-policy read-back for transfer is not established. Session 3 creation and attachment of the networking and compute managed policies are author-reported; their complete saved JSON was not compared with these local texts. The current reports and evidence limits are summarized below. Complete assembled IAM candidates are in [new-account-assembled-iam-policy-candidates.md](new-account-assembled-iam-policy-candidates.md). These texts do not approve any further AWS change.
 
 Replace `<ACCOUNT_ID>` only in a private working copy if a later, separately approved implementation requires it. Never put the real account ID in this public repository.
 
 **Later ephemeral-stage report (2026-10-24):** sessions 4–5 reportedly updated the attached networking and compute policies after the local drafts were assembled. The networking policy reportedly gained `ec2:DescribeAddressesAttribute`; compute policy version 3 reportedly added `ssm:DescribeInstanceInformation`, with a 9-statement count from pasted JSON. Its `Resource = "*"` scope was inferred after the local SSM service-reference file was missing, and the pasted JSON lost wildcard characters in chat rendering. No complete saved-policy JSON was compared with these drafts. The files and embedded policy JSON below therefore remain historical review artifacts, not current verified copies of live policies. The later ephemeral test and teardown are recorded in [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md#2026-10-24-ephemeral-test-ssm-registration-and-teardown-author-supplied-transcript).
+
+**2026-10-26 permission-repair continuation:** the author reports that the private networking-policy copy now includes `ec2:DisassociateAddress` and a network-interface resource in `EphemeralDeleteTaggedNetworkResources`; local checks reported 13 statements and 5,180 compact characters in that account-specific copy. The embedded networking candidate below has been brought up to date with the reported actions, resource, and `ec2:DescribeAddressesAttribute`, but its placeholder-template size was not recalculated. The policy had not yet been saved/read back in the console at the transcript stop point. The author also reports that boundary version 2 was set as default and that a selected read-back showed 8 statements and `session/p3-deploy-*`; attachment and a full saved-JSON comparison remain unchecked. See [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md#2026-10-26-pr-99-sync-and-iam-permission-repair-checkpoint).
 
 ## Decisions and limits
 
 - The author first approved Terraform creating and managing the two named boundary policies as a planning decision, then chose option B on 2026-10-22, superseding it: the boundaries are created outside `p3-terraform` and Terraform. On 2026-10-23, the author chose to create both during initial owner setup and later reported creating them during separately approved session 1, before Terraform creates their roles. Their reported names, counts, and Sids do not establish line-by-line content or effective permissions. The preserved 15-statement reconstruction below retains the superseded `ManageTwoBoundaryPolicies` statement; the separate option-B revision removes only that statement. Both remain reconstructions, and the 14-statement revision is not the unrecovered original JSON. The bounded session 2 separately approved on 2026-10-24 is reported complete; that approval does not cover another root session or future AWS work.
 - The preserved `ManageTwoNamedRoles` statement includes `iam:PutRolePolicy` and `iam:UpdateAssumeRolePolicy` on the project roles. The author chose the option-2 review direction: the local durable candidate includes a root-attached deny for deploy-role trust updates and deletion, while the instance role remains under Terraform as an accepted planning trade-off. Session 1 reports attaching a 17-statement durable inline policy, but the saved JSON was not compared line by line, so the presence and effect of that deny in AWS are not confirmed. Effective permissions remain unverified because the complete attached policy set and boundary behavior have not been checked; see the [new-account design decision](../decisions/new-account-deployment-design.md).
 - Resolved 2026-10-23 (planning only): `s3:PutBucketPolicy` is removed from `ManageDurableBuckets` in the option-B copy, and the owner applies the saved HTTPS-only policies to the two durable buckets after their creation. This 15-statement reconstruction still contains the action as a historical record. The bootstrap state-bucket acceptance is separate.
-- The 15-statement durable policy is a reconstruction from an earlier 11-statement draft and later summarized additions. It is not the unrecovered original 14-statement text. The two earlier full boundary drafts are retained below as superseded; the redrafted boundary JSON in the final section is the current review-only planning version dated 2026-10-23.
-- The superseded earlier deploy boundary used `SsmDocumentsUnverified` for broad SSM document resources and `SsmOwnSessionsOnly` with a `${aws:userid}` session ARN pattern. The redrafted deploy boundary names `SSM-SessionManagerRunShell`, but its existence and use by the plugin remain unverified; the exact match between the session ARN pattern and the workflow’s chosen role-session name also remains unverified. The redrafted instance boundary excludes `ssm:GetParameter` and `ssm:GetParameters`.
+- The 15-statement durable policy is a reconstruction from an earlier 11-statement draft and later summarized additions. It is not the unrecovered original 14-statement text. The two earlier full boundary drafts are retained below as superseded; their session-resource lines have been normalized to `session/p3-deploy-*` for the current workflow. The examples are not archival snapshots of the pre-fix text or verified copies of saved AWS policies. The redrafted boundary JSON in the final section reflects the reported 2026-10-26 session-pattern correction.
+- The superseded earlier deploy boundary used `SsmDocumentsUnverified` for broad SSM document resources. The redrafted deploy boundary names `SSM-SessionManagerRunShell`, but its existence and use by the plugin remain unverified. Its session resource now uses `session/p3-deploy-*`, matching the workflow's reported session prefix; the reported boundary read-back was not a full JSON comparison or an effective-permissions test. The redrafted instance boundary excludes `ssm:GetParameter` and `ssm:GetParameters`.
 - SSE-S3 for both durable buckets and the ephemeral state key `ephemeral/terraform.tfstate` are author-selected planning choices. In session 1, the author reports attaching only the durable inline policy to `p3-terraform`; networking and compute policy drafts are deferred until the ephemeral stage. The networking/compute managed-policy split was applied during session 3 (author-reported); the complete saved policies were not compared line by line. `<ACCOUNT_ID>` stays in Git; substituted copies were reported prepared in a private folder outside the repository, but the exact file-to-clipboard command was not confirmed for each policy. Supplied console text shows the `p3-terraform` trust names `p3-cli`, permits `sts:AssumeRole`, and requires MFA; the no-MFA case, `p3-cli` permissions, and effective permissions remain unchecked. The source-review status and remaining S3/provider gaps for the ephemeral drafts are detailed below and in [PROGRESS-HISTORY.md](../../PROGRESS-HISTORY.md). `iam:PassRole` compatibility with the actual provider call path and the default EBS key remain open. See the [new-account design decision](../decisions/new-account-deployment-design.md) and [source-review record](../../PROGRESS-HISTORY.md).
 - **GitHub OIDC status (author-reported, 2026-10-24):** the `production` Environment is restricted to `main`, with administrator bypass enabled. Temporary workflow Run #1 reported the exact subject recorded in the current trust draft; Run #2 from a non-main branch was blocked once. The current planning choice uses `aud` and exact `sub` only; the checker requested `audience=sts.amazonaws.com` but did not print the `aud` claim separately. The 2026-10-23 six-condition trust JSON below is a historical, superseded checkpoint; the current review-only trust draft follows that earlier JSON. No AWS deploy role or trust policy was applied. See the [design decision](../decisions/new-account-deployment-design.md#2026-10-24-github-oidc-check-and-deploy-role-trust-choice-planning-only).
-- The assembled local candidates measure 4,970 compact characters for the 17-statement durable inline policy, 5,064 for the 13-statement networking policy candidate, and 2,233 for the 8-statement compute policy candidate. The measured inline aggregate is 6,450 including the existing `p3-state-bucket` policy at 1,480. Earlier fragment-only sizes are retained where the fragments are recorded, but the wrapper estimates are superseded by these assembled measurements. AWS quota documentation reports 10,240 characters for aggregate inline policies excluding whitespace, 6,144 per customer-managed policy, and a default of 10 managed policies per role (maximum 25). These are text-size checks and documented defaults, not IAM validation or the account's effective Service Quotas; boundary counting remains unverified. Session 1 reports the expected boundary names/counts and durable inline policy name/count. The durable Sid list matched the local candidate before saving, but was not repeated in that saved-policy read-back; no saved IAM JSON was compared line by line. Both HTTPS-only bucket-policy saves are reported; the WAR read-back was described as matching its draft, while fresh transfer saved-policy read-back is unclear. Session 3 creation and attachment of the networking and compute managed policies are author-reported; the full saved JSON was not compared with these local texts.
+- The assembled candidates measured 4,970 compact characters for the 17-statement durable inline policy, 5,064 for the 13-statement networking policy, and 2,233 for the 8-statement compute policy on 2026-10-24. The networking text below has since changed; its placeholder-template size has not been recalculated. The separately reported 5,180-character measurement is for the account-specific private networking file, not this placeholder candidate. The measured inline aggregate is 6,450 including the existing `p3-state-bucket` policy at 1,480. AWS quota documentation reports 10,240 characters for aggregate inline policies excluding whitespace, 6,144 per customer-managed policy, and a default of 10 managed policies per role (maximum 25). These are text-size checks and documented defaults, not IAM validation or the account's effective Service Quotas; boundary counting remains unverified. Saved policy texts and effective permissions remain incompletely checked.
 
 ## 2026-10-23 durable-bucket HTTPS-only policies (review-only)
 
@@ -361,7 +363,7 @@ Latest earlier full draft present in the author-supplied material; eight stateme
         "ssm:TerminateSession",
         "ssm:ResumeSession"
       ],
-      "Resource": "arn:aws:ssm:*:*:session/${aws:userid}-*"
+      "Resource": "arn:aws:ssm:*:*:session/p3-deploy-*"
     },
     {
       "Sid": "SsmReadResults",
@@ -757,7 +759,7 @@ This earlier review-only draft included four additional unverified claim conditi
         "ssm:TerminateSession",
         "ssm:ResumeSession"
       ],
-      "Resource": "arn:aws:ssm:us-east-1:<ACCOUNT_ID>:session/${aws:userid}-*"
+      "Resource": "arn:aws:ssm:us-east-1:<ACCOUNT_ID>:session/p3-deploy-*"
     },
     {
       "Sid": "SessionReadOnly",
@@ -878,15 +880,15 @@ This deny statement and the two ephemeral state statements are included in the a
 }
 ```
 
-## 2026-10-23 redrafted permissions boundaries (review-only, planning)
+## 2026-10-23 redrafted permissions boundaries (review-only planning checkpoint; session pattern updated 2026-10-26)
 
-Both local boundary JSON documents equal the narrowed role permission policies. They remain review artifacts: session 1 reports that AWS policies with the corresponding names and expected counts/Sids were created, but the saved JSON was not compared line by line. The policies are not yet attached to project roles. Under option B a boundary change needs a separately approved owner session, so neither includes guessed headroom. A missing action found in testing should be added deliberately.
+Both local boundary JSON documents equal the narrowed role permission policies. They remain review artifacts: session 1 reports that AWS policies with the corresponding names and expected counts/Sids were created, but the saved JSON was not compared line by line. At this 2026-10-23 planning checkpoint, their attachment to project roles had not been checked; later role-creation read-backs reported the boundary ARNs on the roles. After the reported 2026-10-26 deploy-boundary version update, its attachment has not been rechecked. Under option B a boundary change needs a separately approved owner session, so neither includes guessed headroom. A missing action found in testing should be added deliberately.
 
 Remaining validation points:
 - The current [`amazon.aws.aws_ssm` documentation](https://docs.ansible.com/ansible/latest/collections/amazon/aws/aws_ssm_connection.html) states that the controller uses presigned URLs for S3 transfers, so the managed instance needs no S3 IAM credentials for that documented path. The project’s selected collection version, plugin configuration, and end-to-end transfer path have not been verified. The instance still needs network access to S3 and `curl`; those prerequisites have not been checked on the proposed AMI. If implementation uses a different transfer path, reassess the instance role and boundary before any apply.
 - Older plugin documentation lists five controller S3 actions. The current deploy permission policy v1 has four on the transfer bucket: `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on its object ARN, plus `s3:ListBucket` on its bucket ARN. `s3:GetBucketLocation` was removed from the transfer-bucket statement only on 2026-10-23; the WAR bucket retains it. The author chose an unversioned transfer bucket, but no live AWS bucket setting was checked. The policy lacks `s3:DeleteObjectVersion`. Keep the removal conditional on pinning `amazon.aws` 11.4.0 or rechecking the source for the chosen version.
 - The ephemeral layer must tag the instance `Project=p3-vprofile`, or `StartSessionOnTaggedInstances` will not match.
-- AWS documents the `${aws:userid}` session ARN pattern; the exact match for the GitHub role’s chosen session name remains unverified. Check the session name set in the workflow’s credentials step.
+- AWS sample policies document the `${aws:userid}` session ARN pattern, but the first deployment test showed it did not match this workflow's `p3-deploy-*` session names. PR #97 changed the repository policy pattern; the author later reported the deploy-boundary version 2 read-back with the matching prefix. The complete saved boundary, its attachment after the version change, and effective behavior remain unchecked.
 - Whether `SSM-SessionManagerRunShell` exists in the new account and is the document the plugin will use remains unverified.
 - The 2026-10-23 authorized AWS IAM documentation check reported a 6,144-character limit per customer-managed policy and a default of 10 managed policies per role (maximum 25). The account's effective Service Quotas were not checked, and whether permissions boundaries count toward the per-role quota remains unresolved.
 
@@ -934,7 +936,7 @@ Equals instance permission policy v2: SSM agent actions only. `ssm:GetParameter`
 
 ### Deploy-role permissions boundary (redrafted)
 
-Exact copy of deploy permission policy v1 (8 statements). `<ACCOUNT_ID>` remains a placeholder.
+Review copy of the deploy-role permissions boundary (8 statements). `<ACCOUNT_ID>` remains a placeholder; the selected session resource was updated to match `session/p3-deploy-*`.
 
 ```json
 {
@@ -987,7 +989,7 @@ Exact copy of deploy permission policy v1 (8 statements). `<ACCOUNT_ID>` remains
         "ssm:TerminateSession",
         "ssm:ResumeSession"
       ],
-      "Resource": "arn:aws:ssm:*:*:session/${aws:userid}-*"
+      "Resource": "arn:aws:ssm:*:*:session/p3-deploy-*"
     },
     {
       "Sid": "SessionReadOnly",
@@ -1066,6 +1068,7 @@ The author agreed to add `EphemeralSecurityGroupRuleEgressCreate` and `Ephemeral
         "ec2:DescribeInternetGateways",
         "ec2:DescribeNatGateways",
         "ec2:DescribeAddresses",
+        "ec2:DescribeAddressesAttribute",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSecurityGroupRules",
         "ec2:DescribeNetworkAcls",
@@ -1251,7 +1254,8 @@ The author agreed to add `EphemeralSecurityGroupRuleEgressCreate` and `Ephemeral
         "ec2:DeleteInternetGateway",
         "ec2:DeleteNatGateway",
         "ec2:DeleteSecurityGroup",
-        "ec2:ReleaseAddress"
+        "ec2:ReleaseAddress",
+        "ec2:DisassociateAddress"
       ],
       "Resource": [
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
@@ -1260,7 +1264,8 @@ The author agreed to add `EphemeralSecurityGroupRuleEgressCreate` and `Ephemeral
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*",
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:natgateway/*",
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*"
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
       ],
       "Condition": {
         "StringEquals": { "ec2:ResourceTag/Project": "p3-vprofile" }
