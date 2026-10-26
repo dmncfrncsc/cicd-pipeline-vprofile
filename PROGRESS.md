@@ -1,6 +1,6 @@
 # Project 3 session handoff
 
-**Updated 2026-10-26.** Local Git is at PR #101 merge `512c46a`; the shared conversation reports the reviewed IAM policy change applied and a follow-up plan with no changes. No live AWS or GitHub service was checked for this update. The rollback sequence remains untested. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for evidence and limits.
+**Updated 2026-10-26.** Local Git is at PR #103 merge `5b4a6d8`. The supplied conversation reports the `/users` retry fix merged and passed YAML parsing and an Ansible syntax check; it has not run on a host. The IAM correction is still unverified by a successful SSM session, and rollback remains untested. No live AWS or GitHub service was checked for this update. See [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for evidence and limits.
 
 ## Objective and current phase
 
@@ -10,13 +10,13 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 
 ## Current status
 
-**Repository:** Local Git shows `main` and `origin/main` at `512c46a` (PR #101 merge). The top-level worktree is clean when the inaccessible submodule is excluded; the submodule status was not checked. No live GitHub check was made.
+**Repository:** Local Git shows `main`, `origin/main`, and `HEAD` at `5b4a6d8` (PR #103 merge). This documentation update leaves five files modified and unstaged, with no staged or untracked files; the submodule is excluded and its status was not checked. The supplied conversation reports that the PR checks passed and the topic branch was deleted. No live GitHub check was made.
 
-**Deployment:** Deploy #5 on `4d8c178` was reported green and followed by teardown. The later Deploy 1 failed at `ssm:TerminateSession` before the app, so rollback did not run. Login, a real user session, and search behavior remain unverified.
+**Deployment:** Deploy #5 on `4d8c178` was reported green and followed by teardown. The later Deploy 1 failed at `ssm:TerminateSession` before the app, so rollback did not run. PR #103 added `register: users_check` and `until: users_check.status in [200, 302]` to the Layer 3 `/users` request, alongside 3 retries and a 10-second delay. The supplied WSL output reports YAML parsing and `ansible-playbook --syntax-check` passed with Ansible Core 2.21.4; the fix has not been tested on a host. Login, a real user session, and search behavior remain unverified.
 
 **IAM repair and plan (author-reported):** The owner session ended with root sign-out. `p3-terraform-networking` is reported at Version 3, default and attached to `p3-terraform`; a selected read-back showed `ec2:DisassociateAddress` and the network-interface resource. The deploy role's boundary was reported set, but its current default version is unknown. A fresh `p3-new` MFA session produced an ARN ending `assumed-role/p3-terraform`; this conversation does not record a private account match after that reload. The saved `deploy-policy.tfplan` reported 0 additions, 1 change, 0 destroys and changed the `Resource` value in `aws_iam_role_policy.deploy` to `session/p3-deploy-*`. The author reports approving and applying it; Terraform reported 0 added, 1 changed, 0 destroyed. A later `terraform plan` reported no changes. This does not verify a successful SSM session or rollback.
 
-**Open follow-up:** The NAT network-interface `Project=p3-vprofile` tag condition is untested, so teardown may still need recovery. Checking runs #1–#3 for account-ID output is low priority; Deploy #6 deletion was reported. Jenkins/J1-vs-J2, billing/credits, and source-use permission remain open. The latest WSL transcript reports clearing exported AWS variables with a final count of 0; this is shell-scoped, not a live credential check.
+**Open follow-up:** The NAT network-interface `Project=p3-vprofile` tag condition is untested, so teardown may still need recovery. Checking runs #1–#3 for account-ID output is low priority; Deploy #6 deletion was reported. Jenkins/J1-vs-J2, billing/credits, and source-use permission remain open. The latest WSL transcript reports clearing exported AWS variables with a final count of 0; this is shell-scoped, not a live credential check. The `ansible/deploy.yml` header still says “draft, not yet run” although Deploy #5 was reported; that comment was identified as a separate code cleanup and was not changed in PR #103.
 
 **Rollback cost review (author-accepted estimate):** The author accepted the existing planning estimate for one proposed run with an 8-hour time limit. This is not current pricing, a guaranteed dollar cap, or authorization to provision or dispatch. Credit coverage, the N. Virginia NAT rate, and package-site connectivity remain unknown.
 
@@ -24,7 +24,7 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 
 ## Next safe step
 
-Get the exact workflow-dispatch inputs and three-run sequence, including what each dispatch is meant to prove, to finish the authorization review. Before any Terraform command, use a fresh `p3-new` session in the same WSL shell and verify the role and intended account privately. A separate approval is required before provisioning or dispatch. If authorized, define who watches the proposed 8-hour window and check the actual remaining resources after teardown; the time limit alone cannot stop billing. Jenkins follows successful rollback verification.
+Finish the authorization review by deciding who will monitor the proposed 8-hour window and whether the three dispatches will run in one sitting or separate sittings. Confirm the proposed normal/forced-failure/normal order and record one Git ref/commit for all dispatches; the workflow does not pin a build ID. This plan is not run authorization. Before any Terraform command, use a fresh `p3-new` session in the same WSL shell and verify the role and intended account privately. Separate approval is required before provisioning and workflow dispatch. If later authorized, check actual remaining resources after teardown; the time limit alone cannot stop billing. Jenkins follows successful rollback verification.
 
 ## Safety boundaries
 
@@ -63,8 +63,8 @@ Defer the full interview guide until implementation is sufficiently complete and
 - [x] Source-use risk stance is documented and the WAR is never distributed publicly. Permission itself remains unresolved.
 - [ ] A versioned artifact is retrievable from the approved private store, only after the required design, cost, and implementation approvals.
 - [ ] Deployment to the approved target and health behavior are verified (one GitHub Actions run is reported successful; primary run evidence was not independently reviewed in this update).
-- [ ] Failure and rollback behavior is tested or meaningfully demonstrated; the CI error path turned CI red, and rollback code is merged but the rollback path has not run.
+- [ ] Failure and rollback behavior is tested or meaningfully demonstrated; rollback code and the PR #103 `/users` retry fix are merged, but the rollback path has not run and the retry has only syntax-check evidence.
 - [ ] Credentials and permissions are handled safely.
 - [ ] Costs, cleanup, and cross-project ownership are documented and verified.
 - [ ] README, NOTES, PROGRESS, and justified design documents match verified work.
-- [ ] Repository cleanup is complete and Git status is clean.
+- [ ] Repository cleanup is complete and Git status is clean (the post-PR #103 checkout was reported clean; this documentation update is currently unstaged).
