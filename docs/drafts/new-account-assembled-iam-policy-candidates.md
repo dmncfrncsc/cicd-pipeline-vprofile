@@ -1,8 +1,10 @@
 # New-account assembled IAM policy candidates
 
-**Status: session 3 creation and attachment of the networking and compute managed policies to `p3-terraform` are author-reported. The local JSON remains a review artifact: the full saved AWS policies were not compared line by line, and effective permissions are untested. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md); the networking candidate was updated 2026-10-24 from its review-only fragments.**
+**Status: session 3 creation and attachment of the networking and compute managed policies to `p3-terraform` are author-reported. The local JSON remains a review artifact: the full saved AWS policies were not compared line by line, and effective permissions are untested. Assembled 2026-10-23 from the source fragments in [the IAM draft package](new-account-iam-policy-package.md); the networking candidate was updated from later reports through 2026-10-26.**
 
-**Later live-policy update report (2026-10-24):** subsequent owner sessions reportedly changed the attached networking and compute policies. The networking policy gained `ec2:DescribeAddressesAttribute`; compute version 3 reportedly added `ssm:DescribeInstanceInformation` and had 9 statements. That count came from pasted JSON with wildcard characters lost in chat rendering, and the `Resource = "*"` scope was inferred because the SSM service-reference file was missing. The saved JSON was not compared with these local candidates. Keep the 13-statement networking and 8-statement compute JSON below labeled as older review candidates; do not treat them as live-policy copies.
+**Later live-policy update report (2026-10-24):** subsequent owner sessions reportedly changed the attached networking and compute policies. The networking policy gained `ec2:DescribeAddressesAttribute`; compute version 3 reportedly added `ssm:DescribeInstanceInformation` and had 9 statements. That count came from pasted JSON with wildcard characters lost in chat rendering, and the `Resource = "*"` scope was inferred because the SSM service-reference file was missing. The saved JSON was not compared with these local candidates. The networking candidate below has since been refreshed from the 2026-10-26 private-file report, but it remains unverified; the compute JSON remains the older 8-statement review candidate. Neither is a copy of the complete saved AWS policies.
+
+**2026-10-26 networking-policy continuation:** the author reports that a private copy added `ec2:DisassociateAddress` and a network-interface ARN to `EphemeralDeleteTaggedNetworkResources`. Local checks reported 13 statements, 8 resources in that statement, and 5,180 compact characters in the account-specific file. The networking candidate below reflects the reported action and resource, but the placeholder-template size was not recalculated and the console save/read-back was still pending. The author also reports boundary version 2 as default with a selected read-back of the `session/p3-deploy-*` line and 8 statements; the full JSON and attachment were not checked.
 
 These complete JSON documents preserve the candidate structure for review and measurement. The source fragments remain in the package; if they change, regenerate and recheck these assembled copies. JSON parsing and size checks do not prove that AWS IAM accepts the policies, that the permissions are sufficient or least-privilege, or that provider calls match them.
 
@@ -254,7 +256,7 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
 
 ## Networking customer-managed policy candidate
 
-13 statements; 5,064 compact characters (whitespace excluded; measured 2026-10-24).
+13 statements; compact size not recalculated after the 2026-10-26 update. The previous 5,064-character measurement was from 2026-10-24.
 
 ```json
 {
@@ -273,6 +275,7 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
         "ec2:DescribeInternetGateways",
         "ec2:DescribeNatGateways",
         "ec2:DescribeAddresses",
+        "ec2:DescribeAddressesAttribute",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSecurityGroupRules",
         "ec2:DescribeNetworkAcls",
@@ -486,7 +489,8 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
         "ec2:DeleteInternetGateway",
         "ec2:DeleteNatGateway",
         "ec2:DeleteSecurityGroup",
-        "ec2:ReleaseAddress"
+        "ec2:ReleaseAddress",
+        "ec2:DisassociateAddress"
       ],
       "Resource": [
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:vpc/*",
@@ -495,7 +499,8 @@ Measurements below exclude whitespace, matching the documented AWS policy charac
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:internet-gateway/*",
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:natgateway/*",
         "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:security-group/*",
-        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*"
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:elastic-ip/*",
+        "arn:aws:ec2:us-east-1:<ACCOUNT_ID>:network-interface/*"
       ],
       "Condition": {
         "StringEquals": {
