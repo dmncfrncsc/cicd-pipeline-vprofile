@@ -187,8 +187,10 @@
                 url: http://localhost:8080/users
                 status_code: [200, 302]
                 follow_redirects: none
+              register: users_check
               retries: 3
               delay: 10
+              until: users_check.status in [200, 302]
           rescue:
             - name: Collect Tomcat error lines
               ansible.builtin.shell: |
