@@ -1,0 +1,8 @@
+# One plugin per line. Only configuration-as-code is pinned for now.
+# After the first lab install, record the resolved list and pin every line.
+configuration-as-code:2136.veb_3a_554550b_f
+job-dsl
+workflow-aggregator
+git
+plain-credentials
+credentials-binding

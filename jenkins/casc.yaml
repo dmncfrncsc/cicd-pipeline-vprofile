@@ -1,0 +1,61 @@
+jenkins:
+  systemMessage: "Project 3 Jenkins lab controller. Rebuilt for each test session."
+  numExecutors: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${trim:${readFile:/var/lib/jenkins/init-secrets/admin-password}}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+  nodes:
+    - permanent:
+        name: "p3-agent"
+        remoteFS: "/home/jenkins-agent/work"
+        numExecutors: 1
+        labelString: "p3-build"
+        launcher:
+          inbound:
+            webSocket: true
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "db-password"
+              description: "VProfile database password (from Parameter Store at boot)"
+              secret: "${trim:${readFile:/var/lib/jenkins/init-secrets/db-password}}"
+          - string:
+              scope: GLOBAL
+              id: "rmq-password"
+              description: "VProfile RabbitMQ password (from Parameter Store at boot)"
+              secret: "${trim:${readFile:/var/lib/jenkins/init-secrets/rmq-password}}"
+          - string:
+              scope: GLOBAL
+              id: "deploy-role-arn"
+              description: "Jenkins deploy role ARN (written at boot, not stored in Git)"
+              secret: "${trim:${readFile:/var/lib/jenkins/init-secrets/deploy-role-arn}}"
+
+jobs:
+  - script: >
+      pipelineJob('vprofile-deploy') {
+        description('Manual build, test, and deploy of VProfile. No automatic triggers.')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('https://github.com/dmncfrncsc/cicd-pipeline-vprofile.git') }
+                branches('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }
