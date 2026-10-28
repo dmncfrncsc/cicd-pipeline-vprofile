@@ -1,0 +1,96 @@
+# Jenkins controller boot script. Terraform puts a shebang and these variables above it:
+#   CONFIG_COMMIT (full commit SHA that contains jenkins/), DEPLOY_ROLE_NAME
+# Never add `set -x` or echo a secret: this script's output goes to the cloud-init log.
+set -euo pipefail
+export HOME=/root
+export DEBIAN_FRONTEND=noninteractive
+export AWS_DEFAULT_REGION=us-east-1
+
+RAW="https://raw.githubusercontent.com/dmncfrncsc/cicd-pipeline-vprofile/${CONFIG_COMMIT}/jenkins"
+JHOME=/var/lib/jenkins
+SECRETS_DIR="$JHOME/init-secrets"
+PIM_VERSION=2.15.0
+
+fail_closed() {
+  echo "p3: $1. Stopping Jenkins and refusing to continue." >&2
+  systemctl stop jenkins || true
+  systemctl disable jenkins || true
+  rm -f "$SECRETS_DIR/agent-secret"
+  exit 1
+}
+http_code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@" || true; }
+
+# 1. Install packages. policy-rc.d (exit 101) stops the Jenkins package from starting itself.
+printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
+apt-get update
+apt-get install -y fontconfig openjdk-21-jre-headless curl awscli
+install -d -m 0755 /etc/apt/keyrings
+curl --proto "=https" --tlsv1.2 -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
+apt-get update
+apt-get install -y jenkins=2.580.1
+rm -f /usr/sbin/policy-rc.d
+
+# 2. Fetch the config files from the pinned commit.
+install -d -m 0700 -o jenkins -g jenkins "$SECRETS_DIR"
+install -d -o jenkins -g jenkins "$JHOME/init.groovy.d"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/casc.yaml" -o "$JHOME/casc.yaml"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/plugins.txt" -o "$JHOME/plugins.txt"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/init-agent-secret.groovy" -o "$JHOME/init.groovy.d/10-write-agent-secret.groovy"
+
+# 3. Install the plugins.
+curl --proto "=https" --tlsv1.2 -fsSL -o /opt/jenkins-plugin-manager.jar \
+  "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PIM_VERSION}/jenkins-plugin-manager-${PIM_VERSION}.jar"
+java -jar /opt/jenkins-plugin-manager.jar --war /usr/share/java/jenkins.war \
+  --plugin-file "$JHOME/plugins.txt" --plugin-download-directory "$JHOME/plugins" --latest=false
+chown -R jenkins:jenkins "$JHOME"
+
+# 4. Write the secret files that casc.yaml reads (owner-only, no trailing newline).
+umask 077
+openssl rand -hex 24 | tr -d '\n' > "$SECRETS_DIR/admin-password"
+aws ssm get-parameter --name /p3/app/db-password --with-decryption --query Parameter.Value --output text | tr -d '\n' > "$SECRETS_DIR/db-password"
+aws ssm get-parameter --name /p3/app/rmq-password --with-decryption --query Parameter.Value --output text | tr -d '\n' > "$SECRETS_DIR/rmq-password"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+printf 'arn:aws:iam::%s:role/%s' "$ACCOUNT_ID" "$DEPLOY_ROLE_NAME" > "$SECRETS_DIR/deploy-role-arn"
+chown jenkins:jenkins "$SECRETS_DIR"/*
+aws ssm delete-parameter --name /p3/jenkins/agent-secret 2>/dev/null || true
+aws ssm put-parameter --name /p3/jenkins/admin-password --type SecureString --overwrite \
+  --value "file://$SECRETS_DIR/admin-password" > /dev/null
+
+# 5. Tell Jenkins to skip the setup wizard and where the config file is, then start it.
+install -d /etc/systemd/system/jenkins.service.d
+cat > /etc/systemd/system/jenkins.service.d/override.conf << 'UNIT'
+[Service]
+Environment="JAVA_OPTS=-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"
+Environment="CASC_JENKINS_CONFIG=/var/lib/jenkins/casc.yaml"
+UNIT
+systemctl daemon-reload
+systemctl start jenkins
+
+# 6. Safety check: wait for Jenkins, then confirm that anonymous access is denied.
+ready=""
+for _ in $(seq 1 60); do
+  c=$(http_code http://localhost:8080/api/json)
+  if [ "$c" != "000" ] && [ "$c" != "503" ]; then ready="$c"; break; fi
+  sleep 5
+done
+[ -n "$ready" ] || fail_closed "Jenkins was not ready after 300 seconds"
+case "$ready" in
+  401|403) ;;
+  *) fail_closed "anonymous /api/json returned $ready, expected 401 or 403" ;;
+esac
+c=$(printf 'user = "admin:%s"\n' "$(cat "$SECRETS_DIR/admin-password")" \
+  | curl -s -o /dev/null -w '%{http_code}' --max-time 10 -K - http://localhost:8080/api/json || true)
+[ "$c" = "200" ] || fail_closed "admin login returned $c, expected 200"
+
+# 7. Hand the agent secret to the agent through Parameter Store, then delete the local copy.
+for _ in $(seq 1 12); do
+  [ -s "$SECRETS_DIR/agent-secret" ] && break
+  sleep 5
+done
+[ -s "$SECRETS_DIR/agent-secret" ] || fail_closed "agent secret file was not written"
+aws ssm put-parameter --name /p3/jenkins/agent-secret --type SecureString --overwrite \
+  --value "file://$SECRETS_DIR/agent-secret" > /dev/null
+rm -f "$SECRETS_DIR/agent-secret"
+echo "p3: controller boot finished. Security check passed."
