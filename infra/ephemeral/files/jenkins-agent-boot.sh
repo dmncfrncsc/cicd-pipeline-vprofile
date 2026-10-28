@@ -35,12 +35,22 @@ apt_install() {
   apt-get update && apt-get install -y "$@"
 }
 
+install_awscli() {
+  aws --version > /dev/null 2>&1 && return 0
+  rm -rf /tmp/awscli-install && mkdir -p /tmp/awscli-install \
+    && curl --proto "=https" --tlsv1.2 -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli-install/awscliv2.zip \
+    && unzip -q /tmp/awscli-install/awscliv2.zip -d /tmp/awscli-install \
+    && /tmp/awscli-install/aws/install \
+    && aws --version
+}
+
 case "$CONTROLLER_IP" in
   ""|*[!0-9.]*) fail "CONTROLLER_IP is not an IPv4 address" ;;
 esac
 
 # 1. Install packages. Java 21 runs the agent connection. Java 17 is for the Maven build.
-retry apt_install openjdk-21-jre-headless openjdk-17-jdk-headless maven git curl unzip python3-venv awscli
+retry apt_install openjdk-21-jre-headless openjdk-17-jdk-headless maven git curl unzip python3-venv
+retry install_awscli
 
 # 3. Install the Session Manager plugin, pinned to one version.
 retry curl --proto "=https" --tlsv1.2 -fsSL -o /tmp/session-manager-plugin.deb \

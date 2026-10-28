@@ -37,10 +37,20 @@ apt_install() {
   apt-get update && apt-get install -y "$@"
 }
 
+install_awscli() {
+  aws --version > /dev/null 2>&1 && return 0
+  rm -rf /tmp/awscli-install && mkdir -p /tmp/awscli-install \
+    && curl --proto "=https" --tlsv1.2 -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli-install/awscliv2.zip \
+    && unzip -q /tmp/awscli-install/awscliv2.zip -d /tmp/awscli-install \
+    && /tmp/awscli-install/aws/install \
+    && aws --version
+}
+
 # 1. Install packages. policy-rc.d (exit 101) stops the Jenkins package from starting itself.
 printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
-retry apt_install fontconfig openjdk-21-jre-headless curl awscli
+retry apt_install fontconfig openjdk-21-jre-headless curl unzip
+retry install_awscli
 install -d -m 0755 /etc/apt/keyrings
 retry curl --proto "=https" --tlsv1.2 -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
 echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
