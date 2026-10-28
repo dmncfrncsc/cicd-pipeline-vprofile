@@ -128,6 +128,8 @@ resource "aws_instance" "jenkins_controller" {
   vpc_security_group_ids = [aws_security_group.jenkins_controller[0].id]
   iam_instance_profile   = var.jenkins_controller_profile_name
 
+  associate_public_ip_address = false
+
   # Terraform puts the shebang and the two values above the boot script.
   # Both values are validated above to contain only safe characters. No secret goes here.
   user_data = join("\n", [
@@ -195,6 +197,8 @@ resource "aws_instance" "jenkins_agent" {
   subnet_id              = aws_subnet.private.id
   vpc_security_group_ids = [aws_security_group.jenkins_agent[0].id]
   iam_instance_profile   = var.jenkins_agent_profile_name
+
+  associate_public_ip_address = false
 
   # Terraform puts the shebang and the controller's private IP above the boot script.
   # The IP is an address Terraform produced. No secret goes here.

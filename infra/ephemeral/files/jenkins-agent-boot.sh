@@ -28,7 +28,7 @@ apt-get update
 apt-get install -y openjdk-21-jre-headless openjdk-17-jdk-headless maven git curl unzip python3-venv awscli
 
 # 3. Install the Session Manager plugin, pinned to one version.
-curl -fsSL -o /tmp/session-manager-plugin.deb \
+curl --proto "=https" --tlsv1.2 -fsSL -o /tmp/session-manager-plugin.deb \
   "https://s3.amazonaws.com/session-manager-downloads/plugin/${SSM_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
 dpkg -i /tmp/session-manager-plugin.deb
 rm -f /tmp/session-manager-plugin.deb

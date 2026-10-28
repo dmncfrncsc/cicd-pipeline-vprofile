@@ -26,7 +26,7 @@ chmod +x /usr/sbin/policy-rc.d
 apt-get update
 apt-get install -y fontconfig openjdk-21-jre-headless curl awscli
 install -d -m 0755 /etc/apt/keyrings
-curl -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+curl --proto "=https" --tlsv1.2 -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
 echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
 apt-get update
 apt-get install -y jenkins=2.580.1
@@ -35,12 +35,12 @@ rm -f /usr/sbin/policy-rc.d
 # 2. Fetch the config files from the pinned commit.
 install -d -m 0700 -o jenkins -g jenkins "$SECRETS_DIR"
 install -d -o jenkins -g jenkins "$JHOME/init.groovy.d"
-curl -fsSL "$RAW/casc.yaml" -o "$JHOME/casc.yaml"
-curl -fsSL "$RAW/plugins.txt" -o "$JHOME/plugins.txt"
-curl -fsSL "$RAW/init-agent-secret.groovy" -o "$JHOME/init.groovy.d/10-write-agent-secret.groovy"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/casc.yaml" -o "$JHOME/casc.yaml"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/plugins.txt" -o "$JHOME/plugins.txt"
+curl --proto "=https" --tlsv1.2 -fsSL "$RAW/init-agent-secret.groovy" -o "$JHOME/init.groovy.d/10-write-agent-secret.groovy"
 
 # 3. Install the plugins.
-curl -fsSL -o /opt/jenkins-plugin-manager.jar \
+curl --proto "=https" --tlsv1.2 -fsSL -o /opt/jenkins-plugin-manager.jar \
   "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PIM_VERSION}/jenkins-plugin-manager-${PIM_VERSION}.jar"
 java -jar /opt/jenkins-plugin-manager.jar --war /usr/share/java/jenkins.war \
   --plugin-file "$JHOME/plugins.txt" --plugin-download-directory "$JHOME/plugins" --latest=false
