@@ -746,3 +746,15 @@ This runbook restores a host-side copy of the app directory. The plan was to use
 The subsequent 14-resource destroy plan was applied. Supplied Terraform output reports that the instance, NAT gateway, VPC, routes, subnets, security group, and internet gateway were removed, then `ec2:DisassociateAddress` failed with 403 because no identity-based policy allowed it. Do not call that destroy complete: no final Terraform state, EIP, remaining-resource, or billing check was supplied. Inspect the existing state and EIP, then make a fresh destroy-only plan for remaining resources; a normal plan against partial state can propose recreating deleted infrastructure. Review any plan before applying. The denial's cause is not established, and changing IAM or using an owner session requires separate approval.
 
 The previously discussed 8-hour figure was a planning ceiling, not a wait or automatic stop. The transcript reports that teardown began about 23 minutes after apply; no actual cost or credit coverage was checked. See [PROGRESS.md](PROGRESS.md) for the current cleanup step and [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) for the run evidence and limits.
+
+## Jenkins Phase 1 code review learning (conversation-reported, 2026-10-28)
+
+**Quality Gate:** a pass/fail check that decides whether analyzed code meets the configured quality rules. The conversation reports that PR #112's SonarCloud Quality Gate passed after code fixes and accepted findings; this was not independently checked here.
+
+**Security Rating:** SonarCloud's letter grade summarizing security findings. The conversation reports an initial E rating for new code; it does not mean every other type of issue was a blocker.
+
+**TLS:** the encryption used by HTTPS. The reported boot-script fix adds `curl --proto "=https" --tlsv1.2` to installer downloads so curl restricts the transfer to HTTPS and requires TLS 1.2 or later. This does not turn the agent's separate in-VPC HTTP connection to Jenkins into HTTPS; that finding was accepted with a written lab-limitation reason.
+
+**No public IP setting:** `associate_public_ip_address = false` tells Terraform not to assign a public IPv4 address to the instance. The conversation reports adding it to both Jenkins instances after Sonar findings; no instance was launched to test it.
+
+These outcomes are reports from the supplied PR conversation, not a fresh Sonar analysis, Terraform plan, AWS change, or Jenkins runtime test. See the [2026-10-28 history checkpoint](PROGRESS-HISTORY.md) and the [Jenkins policy candidate](docs/drafts/new-account-jenkins-iam-policy-candidate.md).
