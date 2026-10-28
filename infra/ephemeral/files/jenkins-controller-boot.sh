@@ -119,3 +119,29 @@ retry aws ssm put-parameter --name /p3/jenkins/agent-secret --type SecureString 
   --value "file://$SECRETS_DIR/agent-secret" > /dev/null
 rm -f "$SECRETS_DIR/agent-secret"
 echo "p3: controller boot finished. Security check passed."
+
+
+# 8. Check that Jenkins sees p3-agent as online. This only reports the result. It does not stop Jenkins.
+agent_result=""
+for _ in $(seq 1 120); do
+  out=$(printf 'user = "admin:%s"\n' "$(cat "$SECRETS_DIR/admin-password")" \
+    | curl -s -w '\n%{http_code}' --max-time 10 -K - http://localhost:8080/computer/p3-agent/api/json || true)
+  code=${out##*$'\n'}
+  json=${out%$'\n'*}
+  if [ "$code" = "200" ]; then
+    if printf '%s' "$json" | grep -Eq '"offline"[[:space:]]*:[[:space:]]*false'; then
+      agent_result=online
+      break
+    fi
+    agent_result=offline
+  else
+    agent_result="node API returned $code"
+  fi
+  sleep 5
+done
+if [ "$agent_result" = "online" ]; then
+  echo "p3: PASS agent p3-agent is online"
+else
+  echo "p3: FAIL agent p3-agent not online after 600 seconds (last state: ${agent_result:-none})" >&2
+  exit 1
+fi
