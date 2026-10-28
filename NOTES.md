@@ -8,6 +8,21 @@ Project 3 uses the instructor-provided VProfile sample web app to practice an au
 
 In Phase 1, GitHub Actions (GitHub's tool for running automated jobs) gets the pinned source, runs the shared build script with Maven (a Java build tool), and reports pass or fail; this phase has no AWS access. Jenkins (a server for running build and deployment jobs) and AWS deployment come later, after separate design and cost approval.
 
+## Documentation rule: explain new terms
+
+Whenever a documentation update introduces a technical or project term that is new in the conversation, add the term and a plain-language definition to these notes. Define it at its first use in the updated document too. A short sentence is enough; write for a reader with no assumed technical background.
+
+## Jenkins bootstrap terms (planning)
+
+- **Jenkins Configuration as Code (JCasC):** a Jenkins plugin that applies settings from a YAML file.
+- **`readFile` helper:** a JCasC feature that reads a local file into a setting; `${trim:${readFile:/path/to/file}}` also removes trailing spaces or a newline.
+- **Job DSL:** a Jenkins plugin that creates jobs from a short Groovy script instead of requiring each job to be clicked together in the web page.
+- **Plugin Installation Manager:** a command-line tool that downloads Jenkins plugins and their dependencies before Jenkins starts.
+- **`enable_jenkins`:** the planned on/off Terraform variable; off means Terraform manages zero Jenkins instances and related security groups, while on includes them in the plan.
+- **Fail-closed startup check:** the controller boot script stops Jenkins if it cannot confirm anonymous requests are denied and the admin login works.
+
+These definitions explain the current design and draft files; none confirms a Jenkins startup or lab test.
+
 ## Plain-language guide: your work with Claude and Codex
 
 Use the adopted update guidance together with supplied terminal output, console screenshots, and local files. A summary or claim alone is not independent proof of live AWS state. The progress files distinguish decisions, plans, author-reported actions, and checks. External Project Knowledge copies may lag behind the repository, so use [PROGRESS.md](PROGRESS.md) for the current handoff.
