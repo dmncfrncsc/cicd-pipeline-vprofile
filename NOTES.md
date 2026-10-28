@@ -758,3 +758,7 @@ The previously discussed 8-hour figure was a planning ceiling, not a wait or aut
 **No public IP setting:** `associate_public_ip_address = false` tells Terraform not to assign a public IPv4 address to the instance. The conversation reports adding it to both Jenkins instances after Sonar findings; no instance was launched to test it.
 
 These outcomes are reports from the supplied PR conversation, not a fresh Sonar analysis, Terraform plan, AWS change, or Jenkins runtime test. See the [2026-10-28 history checkpoint](PROGRESS-HISTORY.md) and the [Jenkins policy candidate](docs/drafts/new-account-jenkins-iam-policy-candidate.md).
+
+## Reading IAM errors carefully (conversation-supplied, 2026-10-28)
+
+`AccessDenied` means the current identity was not allowed to perform that read. It does not show whether the policy exists or which policies are attached. In this checkpoint, `iam:GetPolicy` for the Jenkins instance boundary and `iam:ListAttachedRolePolicies` for `p3-terraform` were denied, so both results are inconclusive. The read of `p3-vprofile-deploy-boundary` succeeded and returned default version `v2` and one boundary use, but its saved policy text was not compared with the local draft. Before relying on a policy, confirm the identity, use an authorized read-back, and compare the complete saved JSON with the review copy. See the [history checkpoint](PROGRESS-HISTORY.md) and [new-account design decision](docs/decisions/new-account-deployment-design.md).
