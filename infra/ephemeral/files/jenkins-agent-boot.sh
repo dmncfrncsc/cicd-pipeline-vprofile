@@ -18,17 +18,32 @@ fail() {
   exit 1
 }
 http_code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@" || true; }
+retry() {
+  local n=1
+  until "$@"; do
+    if [ "$n" -ge 10 ]; then
+      echo "p3: giving up after 10 attempts: $1" >&2
+      return 1
+    fi
+    echo "p3: attempt $n failed: $1. Retrying in 15 seconds." >&2
+    n=$((n + 1))
+    sleep 15
+  done
+}
+
+apt_install() {
+  apt-get update && apt-get install -y "$@"
+}
 
 case "$CONTROLLER_IP" in
   ""|*[!0-9.]*) fail "CONTROLLER_IP is not an IPv4 address" ;;
 esac
 
 # 1. Install packages. Java 21 runs the agent connection. Java 17 is for the Maven build.
-apt-get update
-apt-get install -y openjdk-21-jre-headless openjdk-17-jdk-headless maven git curl unzip python3-venv awscli
+retry apt_install openjdk-21-jre-headless openjdk-17-jdk-headless maven git curl unzip python3-venv awscli
 
 # 3. Install the Session Manager plugin, pinned to one version.
-curl --proto "=https" --tlsv1.2 -fsSL -o /tmp/session-manager-plugin.deb \
+retry curl --proto "=https" --tlsv1.2 -fsSL -o /tmp/session-manager-plugin.deb \
   "https://s3.amazonaws.com/session-manager-downloads/plugin/${SSM_PLUGIN_VERSION}/ubuntu_64bit/session-manager-plugin.deb"
 dpkg -i /tmp/session-manager-plugin.deb
 rm -f /tmp/session-manager-plugin.deb

@@ -172,6 +172,14 @@ resource "aws_instance" "jenkins_controller" {
       error_message = "With enable_jenkins = true, set jenkins_config_commit, jenkins_deploy_role_name, and jenkins_controller_profile_name."
     }
   }
+
+  depends_on = [
+    aws_nat_gateway.main,
+    aws_route_table_association.private,
+    aws_vpc_security_group_egress_rule.jenkins_controller_https,
+    aws_vpc_security_group_egress_rule.jenkins_controller_http,
+  ]
+
 }
 
 output "jenkins_controller_instance_id" {
@@ -237,6 +245,15 @@ resource "aws_instance" "jenkins_agent" {
       error_message = "With enable_jenkins = true, set jenkins_agent_profile_name."
     }
   }
+
+  depends_on = [
+    aws_nat_gateway.main,
+    aws_route_table_association.private,
+    aws_vpc_security_group_egress_rule.jenkins_agent_https,
+    aws_vpc_security_group_egress_rule.jenkins_agent_http,
+    aws_vpc_security_group_egress_rule.jenkins_agent_to_controller,
+  ]
+
 }
 
 output "jenkins_agent_instance_id" {
