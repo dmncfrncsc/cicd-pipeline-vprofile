@@ -786,6 +786,18 @@ Role assumption has two sides: the caller's policy must allow the AWS Security T
 
 An **instance profile** connects an IAM role to an EC2 instance so software on that instance can obtain the role's temporary credentials. `iam:PassRole` lets the Terraform identity tell EC2 which role to use; it does not let Terraform use the instance role's permissions as its own. The trust policy on the instance role must also allow EC2 to use it. These are separate checks in the Jenkins launch path.
 
+## Jenkins access and public submodule checkpoint (2026-10-29)
+
+**A Terraform plan is not an authorization check:** The durable-stack plan reported five additions, but the first apply still failed with `AccessDenied` for creating the Session Manager document and IAM roles under `p3-terraform`. A later apply reported success after a temporary permission was reportedly added, then removed. Review a plan for intended changes, but do not infer from a complete plan that the caller can apply it. Apply results and cleanup must be recorded separately.
+
+**An AssumeRole denial does not identify its cause by itself:** The direct `aws sts assume-role` attempt for `p3-jenkins-operator` failed before the later identity-policy and profile changes. The output did not isolate whether the trust policy's MFA condition, the caller's `sts:AssumeRole` authorization, or both caused the denial. After root reportedly added `p3-cli-assume-jenkins-access` and the AWS CLI profiles were configured to prompt for MFA, the supplied output showed both roles assumed. Record the observed failure and success without treating the earlier diagnosis as proven; a successful MFA-profile assumption also does not test the SSM document or its resource restrictions.
+
+**Public submodule readability is separate from rights and agent access:** A submodule (a link to another Git repository pinned at a specific commit) pointed to the author's public fork `dmncfrncsc/vprofile-project`. A credential-disabled `git ls-remote` returned an advertised `HEAD`, which shows anonymous access to the remote at that moment. It does not prove that the exact pinned submodule commit is fetchable by Jenkins, that the agent's NAT path works, or that use or redistribution is permitted. Public availability is not a license. The author confirmed keeping the fork public; source-use rights remain unresolved, and the WAR remains barred from public distribution.
+
+**SSH reachability from a laptop is not agent reachability:** The SSH-over-443 check authenticated from the author's computer using a personal SSH key. It did not test a repository-scoped deploy key or the Jenkins agent's network. Once anonymous HTTPS access was confirmed, the deploy-key, token, and private-S3-copy options were dropped for this checkout; no SSH/plugin/network changes were needed for source access.
+
+**Avoid saving a blank editor tab over a WSL config:** The attempted `\\wsl$` path initially opened a blank, unsaved `config` tab rather than the existing `~/.aws/config`. The file was checked from WSL first, then reopened at the confirmed `Ubuntu > home > domin > .aws > config` path before edits. Verify expected existing sections before saving a cross-environment config file; never open or print `~/.aws/credentials` when only the non-secret CLI config is needed.
+
 ### Read the network rule and tag conditions precisely
 
 A **security group** is a network filter attached to an AWS resource. An **ingress** rule allows incoming traffic; an **egress** rule allows outgoing traffic. The local Jenkins Terraform declares one ingress rule: TCP port 8080 to the controller, with the agent's security group as the source. This narrows network access to the agent group instead of an IP range.
