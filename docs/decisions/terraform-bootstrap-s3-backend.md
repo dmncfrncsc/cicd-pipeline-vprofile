@@ -1,6 +1,6 @@
 # Decision: Store Project 3 bootstrap state in its S3 state bucket
 
-**Canonical decision record updated 2026-10-22.** This record combines the historical prior-account migration evidence with the new-account backend decision. AWS resource and role details are summarized from recorded terminal output and author-supplied policy text and console screenshots; they are not current live checks.
+**Canonical decision record originally updated 2026-10-22; prior-account cleanup follow-up added 2026-11-02.** This record combines historical prior-account migration evidence with the new-account backend decision. AWS resource and role details are summarized from recorded terminal output and author-supplied policy text and console screenshots; they are not current live checks.
 
 **Status:** Chosen and migrated in the new account according to recorded 2026-10-21 terminal evidence. An author-supplied read-only comparison dated 2026-10-22 confirmed that live S3 metadata differs from the preserved backup; it did not compare state contents or explain the cause. The role's effective permissions remain unverified. Its ability to remove the HTTPS-only bucket policy was explicitly accepted by the author on 2026-10-22 as a temporary risk (see "HTTPS-only bucket policy: accepted temporary risk" below).
 
@@ -45,6 +45,7 @@ Versioning can help recover an earlier object version, but the lifecycle rule re
 - A version listing returned `AccessDenied` for `s3:ListBucketVersions`; the number of stored versions was unknown. Terraform output did not provide an API-by-API IAM trace.
 - The migration was recorded as a process deviation: `terraform init -migrate-state` began before separate explicit approval had been given. Answering Terraform's copy prompt with `yes` was not that approval. The decision record was preserved as historical context, not as a current-account instruction.
 - That account is paused and is not the current backend. Its bucket, policy, cost, and live state were not rechecked on 2026-10-22.
+- **Later prior-account cleanup follow-up (author-supplied output; action date not stated):** the author privately confirmed `p3-readonly` was pointed at this prior account. The state bucket reported versioning `Enabled`; its object versions and delete markers were not listed before the later deletion. The author copied the current state object outside the repository, but its file permissions were not verified. A subsequent S3 bucket listing reported that the state bucket and four other buckets were absent. Because version history was not inventoried before deletion, historical state contents are unknown. Two local state files were later moved to `~/old-account-trash/`; one was inspected and referenced only the prior bootstrap-bucket resources, while the `.pre-migration` file was not inspected. Neither file was reported deleted or permission-checked. See the [2026-11-02 prior-account cleanup follow-up](../../PROGRESS-HISTORY.md).
 
 ### Permission and verification limits
 
