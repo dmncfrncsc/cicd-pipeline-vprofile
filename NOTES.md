@@ -254,7 +254,7 @@ If NAT is the only outbound path, deleting it while keeping the instance stops S
 
 **Encryption read-back limitation (reported from the prior-account bucket-encryption read-back):** The read-back listed SSE-C among the blocked encryption types. The Terraform configuration does not set SSE-C, and its source was not investigated; no cause is assigned.
 
-**MFA profiles and Terraform credentials (verified from WSL terminal output dated 2026-10-21; follow-up terminal evidence dated 2026-10-22 and 2026-10-23):** Multi-factor authentication (MFA) asks for a second sign-in check; the AWS CLI's `p3-new` profile prompted for a code and assumed the `p3-terraform` role, while Terraform could not collect the MFA code through that profile path (error: `AssumeRoleTokenProvider session option not set`). In WSL Bash, the tested command `eval "$(aws configure export-credentials --profile p3-new --format env)"` lets the CLI handle MFA and load short-lived credentials into the current shell. Run it first; then run `aws sts get-caller-identity` in that same shell and confirm `assumed-role/p3-terraform` before any other AWS read or Terraform command. A plain identity check before loading `p3-new` was recorded as returning the IAM user in `default`, which is reported to target the old account. Git Bash had only a `default` profile, so use WSL for Terraform. The author reported that `default` and `p3-readonly` map to the old account and `p3-new` to the new account; the `p3-readonly` SSO token was expired. After exported credentials were cleared, three IAM reads returned `NoSuchEntity`; no caller-identity output was captured afterward. This is consistent with a default identity in another account but does not establish it; only the 2026-10-21 record verified fallback after `unset`. Credential values remain secret; never print them. `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CREDENTIAL_EXPIRATION` clears the recorded exported variables from that shell.
+**MFA profiles and Terraform credentials (verified from WSL output on 2026-10-21 and follow-ups through 2026-11-02):** Multi-factor authentication (MFA) asks for a second sign-in check; in WSL Bash, `eval "$(aws configure export-credentials --profile p3-new --format env)"` handles MFA and exports short-lived credentials into the current shell. Then `aws sts get-caller-identity` reports the credentials actually in use. Earlier, Terraform could not collect the MFA code through the `p3-new` profile path (`AssumeRoleTokenProvider session option not set`), which is why the export-credentials method was used. A 2026-10-22 read showed that exported credentials had been cleared, followed by three `NoSuchEntity` IAM responses but no caller-identity output; that did not establish which identity fallback credentials selected. The 2026-11-02 test exposed two further identity traps: credentials exported from `p3-jenkins-operator` identify the Jenkins UI role, not Terraform; and the named SSO profile `p3-terraform` and the `p3-new` role profile both return a role named `p3-terraform` but target different accounts. The author used `p3-new` and privately checked the account before Terraform. Check both the role ARN and the privately verified account; a matching role name alone is insufficient. Exported `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `AWS_SESSION_TOKEN` environment variables take precedence over profile selection, so `--profile` does not make an already contaminated shell safe. Use separate shells for different roles, or start a clean shell and verify identity again. A later attempt to export credentials with `--profile p3-cli-new` failed because that profile was not found in the active CLI configuration; the successful documented name is `p3-new`, but no profile-list output or retry was provided after that error. Check `aws configure list-profiles` and use an exact listed name rather than guessing. The `unset` command below clears only the named exported environment variables in the current shell; it is not evidence of SSO logout or cache invalidation. Earlier, Git Bash had only a `default` profile, while `default` and `p3-readonly` were reported to target the prior account and `p3-new` the new account; the `p3-readonly` SSO token was expired at that checkpoint. WSL is the documented Terraform shell. Credential values and account IDs must not be printed or pasted. `unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_CREDENTIAL_EXPIRATION` clears the recorded exported variables from that shell.
 
 **Account-specific policy copies (learning, 2026-10-23):** Keep `<ACCOUNT_ID>` in public policy templates and create substituted copies only in a private working folder outside Git. A hidden `read -rsp` prompt avoids echoing the typed ID; clear the shell variable after substitution. Parse the JSON and check its expected shape, then compare the single account ID in each account-scoped copy with the STS account from the verified `p3-terraform` session. These steps were reported completed before the owner session, catching malformed templates and checking that the copies targeted the session's account while keeping the real ID out of repository files and shared output. They establish syntax, shape, and target-ID match only; they do not establish AWS IAM acceptance or effective permissions. See the [owner-session preparation record](docs/decisions/new-account-deployment-design.md#owner-session-working-checklist-approved-for-planning-only-2026-10-23).
 
@@ -872,7 +872,78 @@ The supplied WSL output reports `bash -n` passing for both boot scripts, `terraf
 
 **Git Bash and WSL have separate command histories (author-supplied output, 2026-10-28):** A `history` search in Git Bash returned only Git Bash commands; running the same search in Ubuntu WSL exposed Terraform and Systems Manager commands absent from the first result. Shell history is local to the shell environment, so an empty or irrelevant result in one shell does not establish that a command was never run. Search in the same shell where the command was issued, and use the prompt/path to identify that environment.
 
-**Plugin advisories in boot output:** The Plugin Installation Manager output listed script-security advisory identifiers for the pinned version. The transcript did not investigate those advisories or establish exploitability in this setup. Treat the output as a follow-up security review item; do not claim the plugin set is security-cleared just because installation and the PR quality gate passed.
+**Plugin warnings cover resolved dependencies, not just direct entries:** `jenkins/plugins.txt` lists six requested plugins and pins only `configuration-as-code`; the other five requested entries have no explicit version. The supplied controller log later associated 20 advisory entries with seven resolved plugin names, including `script-security` version `1385.v7d2d9ec4d909`. `script-security` is not a direct entry in `plugins.txt`; the log reports the resolved version, not a pinned version. The warning list identifies some affected dependencies but is not the complete installed-plugin inventory. `--latest=false` does not pin unversioned requested plugins or their dependency tree. Preserve the observed warning text and resolved plugin versions, review advisories before changing pins, and do not claim applicability, exploitability, remediation, or a security-cleared plugin set without evidence.
+
+## Sixth-test resolved Jenkins plugin inventory
+
+A **resolved-plugin inventory** is the list of plugins Jenkins reports as installed after it has selected requested plugins and their dependencies. The author pasted the plugin-manager JSON response from the sixth-test boot. Parsing that response produced 60 entries; this count corrects the preceding assistant's claim of 61. These are observed versions for that boot, not versions pinned by `jenkins/plugins.txt` and not a promise that a future boot will resolve identically.
+
+| Plugin | Resolved version |
+| --- | --- |
+| `antisamy-markup-formatter` | `173.v680e3a_b_69ff3` |
+| `apache-httpcomponents-client-4-api` | `4.5.14-269.vfa_2321039a_83` |
+| `asm-api` | `9.9-185.va_6c6b_3348b_c3` |
+| `bootstrap5-api` | `5.3.8-895.v4d0d8e47fea_d` |
+| `bouncycastle-api` | `2.30.1.82-277.v70ca_0b_877184` |
+| `branch-api` | `2.1229.ve86b_d02b_5e56` |
+| `caffeine-api` | `3.2.3-194.v31a_b_f7a_b_5a_81` |
+| `cloudbees-folder` | `6.1026.ve06dfa_cf31c3` |
+| `commons-lang3-api` | `3.20.0-109.ve43756e2d2b_4` |
+| `commons-text-api` | `1.15.0-218.va_61573470393` |
+| `configuration-as-code` | `2136.veb_3a_554550b_f` |
+| `credentials-binding` | `728.v902a_273b_8947` |
+| `credentials` | `1480.v2246fd131e83` |
+| `display-url-api` | `2.217.va_6b_de84cc74b_` |
+| `durable-task` | `577.v2a_8a_4b_7c0247` |
+| `font-awesome-api` | `7.1.0-882.v1dfb_771e3278` |
+| `git-client` | `6.5.0` |
+| `git` | `5.11.0` |
+| `gson-api` | `2.13.2-173.va_a_092315913c` |
+| `instance-identity` | `203.v15e81a_1b_7a_38` |
+| `ionicons-api` | `94.vcc3065403257` |
+| `jackson2-api` | `2.17.0-379.v02de8ec9f64c` |
+| `jakarta-activation-api` | `2.1.3-1` |
+| `jakarta-mail-api` | `2.1.3-2` |
+| `javax-activation-api` | `1.2.0-6` |
+| `jaxb` | `2.3.9-1` |
+| `job-dsl` | `3732.v9a_c49a_61a_313` |
+| `joda-time-api` | `2.12.7-29.v5a_b_e3a_82269a_` |
+| `json-api` | `20251224-185.v0cc18490c62c` |
+| `mailer` | `525.v2458b_d8a_1a_71` |
+| `mina-sshd-api-common` | `2.16.0-167.va_269f38cc024` |
+| `mina-sshd-api-core` | `2.16.0-167.va_269f38cc024` |
+| `pipeline-build-step` | `540.vb_e8849e1a_b_d8` |
+| `pipeline-groovy-lib` | `744.v5b_556ee7c253` |
+| `pipeline-input-step` | `495.ve9c153f6067b_` |
+| `pipeline-milestone-step` | `119.vdfdc43fc3b_9a_` |
+| `pipeline-model-api` | `2.2218.v56d0cda_37c72` |
+| `pipeline-model-definition` | `2.2218.v56d0cda_37c72` |
+| `pipeline-model-extensions` | `2.2218.v56d0cda_37c72` |
+| `pipeline-stage-step` | `312.v8cd10304c27a_` |
+| `pipeline-stage-tags-metadata` | `2.2218.v56d0cda_37c72` |
+| `plain-credentials` | `199.v9f8e1f741799` |
+| `plugin-util-api` | `6.1192.v30fe6e2837ff` |
+| `prism-api` | `1.30.0-717.vb_f8360844b_53` |
+| `scm-api` | `724.v7d839074eb_5c` |
+| `script-security` | `1385.v7d2d9ec4d909` |
+| `snakeyaml-api` | `2.5-149.v72471e9c6371` |
+| `ssh-credentials` | `361.vb_f6760818e8c` |
+| `structs` | `362.va_b_695ef4fdf9` |
+| `variant` | `60.v7290fc0eb_b_cd` |
+| `workflow-aggregator` | `608.v67378e9d3db_1` |
+| `workflow-api` | `1384.vdc05a_48f535f` |
+| `workflow-basic-steps` | `1058.vcb_fc1e3a_21a_9` |
+| `workflow-cps` | `4002.v80ca_d0f47d7f` |
+| `workflow-durable-task-step` | `1398.vf6c9e89e5988` |
+| `workflow-job` | `1472.ve4d5eca_143c4` |
+| `workflow-multibranch` | `795.ve0cb_1f45ca_9a_` |
+| `workflow-scm-step` | `466.va_d69e602552b_` |
+| `workflow-step-api` | `710.v3e456cc85233` |
+| `workflow-support` | `989.va_20a_1a_57710a_` |
+
+The inventory includes the seven plugin names associated with the 20 boot-time advisory entries. The transcript says an official-source research attempt began and read six pages, but the response did not load; no citations, applicability assessment, or conclusions were preserved. Do not infer that the findings were reviewed or remediated. Use this list as the version evidence for a later, separately authorized advisory review.
+
+**Jenkins first-build parameter failure (local `Jenkinsfile` and author-supplied sixth-test log):** A pipeline parameter is a named input value supplied to a build, such as the app instance ID. In the sixth test, Build #1 stopped in `Check input` with `INSTANCE_ID: unbound variable`; the `Jenkinsfile` declares `INSTANCE_ID` and `FORCE_FAILURE`, and that shell enables Bash's unset-variable check with `set -u`. Checkout, compilation, and deployment were skipped, so this failure was not an application or AWS deployment failure. The later Build with Parameters form reportedly showed both fields. That sequence is consistent with the first build running before Jenkins made its parameter definitions available to the shell, but it does not prove a general Jenkins rule. When a first run fails this way, use the console log to identify the stage and missing input; do not infer that downstream stages ran or blindly retry a deployment.
 
 ## Jenkins agent-online check and fourth-test result
 
