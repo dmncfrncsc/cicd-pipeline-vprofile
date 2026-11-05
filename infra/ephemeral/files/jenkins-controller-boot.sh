@@ -68,7 +68,7 @@ retry curl --proto "=https" --tlsv1.2 -fsSL "$RAW/init-agent-secret.groovy" -o "
 retry curl --proto "=https" --tlsv1.2 -fsSL -o /opt/jenkins-plugin-manager.jar \
   "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PIM_VERSION}/jenkins-plugin-manager-${PIM_VERSION}.jar"
 retry java -jar /opt/jenkins-plugin-manager.jar --war /usr/share/java/jenkins.war \
-  --plugin-file "$JHOME/plugins.txt" --plugin-download-directory "$JHOME/plugins" --latest=false
+  --plugin-file "$JHOME/plugins.txt" --plugin-download-directory "$JHOME/plugins"
 chown -R jenkins:jenkins "$JHOME"
 
 # 4. Write the secret files that casc.yaml reads (owner-only, no trailing newline).
