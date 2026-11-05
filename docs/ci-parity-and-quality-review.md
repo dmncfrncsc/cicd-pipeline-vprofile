@@ -1,0 +1,52 @@
+# CI parity and quality review
+
+**Review checkpoint:** 2026-11-05. This is a local-file comparison plus author-reported run evidence from the supplied conversation. It is not a fresh GitHub, SonarQube Cloud, Jenkins, AWS, or billing check. Source line references identify the reviewed repository files.
+
+## GitHub Actions and Jenkins parity
+
+| Step | GitHub Actions | Jenkins | Status |
+|---|---|---|---|
+| Trigger | Build/test runs on pull requests, pushes to `main`, and manual dispatch; deploy is manual dispatch only (`.github/workflows/build-test.yml:3-7`; `.github/workflows/deploy.yml:3-14`). | No triggers are configured in the Jenkinsfile; the job is manually run (`Jenkinsfile:1-4`). | Different |
+| Runner or agent | Both workflows use `ubuntu-24.04` hosted runners (`build-test.yml:19`; `deploy.yml:26`). | Pipeline uses the `p3-build` agent (`Jenkinsfile:4`). | Different |
+| Checkout and submodule | Checkout action fetches the submodule and disables persisted credentials (`build-test.yml:21-26`; `deploy.yml:37-41`). | GitSCM enables the pinned submodule with tracking and parent credentials disabled (`Jenkinsfile:36-54`). | Same intent; different mechanisms |
+| Java and Maven versions | Temurin Java 17 is specified; Maven is not explicitly pinned (`build-test.yml:28-32`; `deploy.yml:43-47`). | `JAVA_HOME` specifies Java 17; Maven is not explicitly pinned (`Jenkinsfile:17,60`). | Different/unknown: Java is aligned; Maven equivalence is unestablished |
+| Build script | Runs `bash scripts/build.sh` (`build-test.yml:34-35`; `deploy.yml:49-50`). | Runs the same script (`Jenkinsfile:56-64`). | Same |
+| Tests | Shared script runs Maven, rejects zero tests, and checks for the WAR (`scripts/build.sh:34-39`). | Same script and checks run in the build stage (`Jenkinsfile:56-64`; `scripts/build.sh:34-39`). | Same |
+| WAR creation | Shared script verifies `target/vprofile-v2.war` (`scripts/build.sh:37-39`). | Same script and output path (`Jenkinsfile:20,56-64`; `scripts/build.sh:37-39`). | Same |
+| S3 key and upload command | `aws s3 cp` uploads to `s3://p3-vprofile-war-k7m3q9/vprofile-v2.war` (`deploy.yml:69`). | Same key and command using `WAR_BUCKET` (`Jenkinsfile:21,99`). | Same |
+| AWS credential route | GitHub OIDC through `configure-aws-credentials` and the `AWS_ROLE_ARN` Environment secret (`deploy.yml:30-31,56-61`). | Reads the deploy-role ARN from Jenkins credentials and calls `aws sts assume-role` (`Jenkinsfile:69-86`). | Different |
+| Ansible invocation | Runs `ansible/deploy.yml` over SSM after setting up Ansible and collections (`deploy.yml:73-81,94-101`). | Runs the same playbook over SSM and installs the same pinned Ansible and collection versions (`Jenkinsfile:104-117`). | Same playbook and principal settings; execution setup differs |
+| Health checks | Shared Ansible playbook checks services, `/`, `/users`, and database users (`ansible/deploy.yml:165-229`). | Calls the same playbook (`Jenkinsfile:110-117`). | Same code path |
+| Rollback and failure handling | `force_failure` reaches the playbook's rescue path, which restores the saved app and checks it (`deploy.yml:7-14,34`; `ansible/deploy.yml:223-288`). | `FORCE_FAILURE` is passed to the same playbook (`Jenkinsfile:15,115`). | One-side-only demonstrated: the recorded intentional-failure and rollback run is GitHub Actions, not Jenkins |
+| Secret handling | Uses GitHub Environment secrets, writes deploy variables to a temporary JSON file, and removes it with an `always()` step (`deploy.yml:84-105`). | Uses Jenkins credentials and a temporary JSON file removed by a shell trap (`Jenkinsfile:69-78,101-117`). | Different credential source and cleanup mechanism |
+| Logging and masking | Deletes the temporary file; Ansible marks password-bearing tasks `no_log` (`deploy.yml:84-105`; `ansible/deploy.yml:64,76,124,131`). | Disables shell tracing, uses an owner-only temporary file removed on exit, and uses the same Ansible `no_log` tasks (`Jenkinsfile:77-78,101-102`; `ansible/deploy.yml:64,76,124,131`). | Different mechanisms |
+| Run evidence | Build and Test runs #267 (PR #130) and #268 (push to `main`) and three deployment dispatches are described in project records (`PROGRESS-HISTORY.md:517-520,808`). Raw event summaries were not opened. | Successful fifth- and sixth-test builds are described in project records (`PROGRESS-HISTORY.md:798,890`). The seventh-test Build #2 is reported in the supplied conversation and recorded in the 2026-11-05 checkpoint. | Different evidence sources and detail; reports are not independent verification |
+
+### Recorded run evidence and conclusion
+
+- **GitHub Actions — reported:** Build and Test #267 for PR #130 and #268 for a push to `main` are recorded as passing; raw event summaries were not opened. Three deployment dispatches are recorded as normal success, forced failure followed by same-app rollback, and a later successful deployment (`PROGRESS-HISTORY.md:517-520,808`).
+- **Jenkins — reported:** Fifth- and sixth-test Build #2 runs are recorded in the history. The seventh-test Build #2 is reported for 2026-11-05 at `50b3172544366eebb63557912b9126b819532dfc`: Maven `BUILD SUCCESS`, identity check passed, 79.4 MiB WAR upload, Ansible `ok=25 changed=16 failed=0`, and 10 users. The local commit establishes the checkout revision, not the run details.
+- **Local Maven log — file evidence:** `build-work/mvn.log` reports nine tests: `SampleTest` (1), `UserControllerTest` (6), `RoleTest` (1), and `UserTest` (1). The log does not identify its originating CI/Jenkins run.
+
+Both platforms invoke the same build script and Ansible playbook and have reported successful deployments. That demonstrates shared code and successful runs, not end-to-end parity. Maven is not explicitly pinned; runners and installed tools may differ; AWS credentials and triggers differ; Jenkins had a reported first-run `INSTANCE_ID` failure; and target application/database state can affect playbook outcomes. The intentional-failure and rollback demonstration is recorded only for GitHub Actions.
+
+## Quality checks
+
+| Check | Configuration and coverage | Last recorded outcome and limits |
+|---|---|---|
+| SonarQube Cloud | Reported PR/main code analysis; no Sonar step appears in the inspected Actions workflows. Its exact integration/configuration is not present in those workflow files. | Accepted findings and green gates are reported in project records, not freshly read from SonarQube Cloud. The durable-bucket `terraform:S6258` acceptance is documented below. |
+| `terraform fmt -check` | Manual local formatting check; not an Actions workflow step. | Reported pass with no output. It does not exercise Terraform or AWS behavior. |
+| `terraform validate` | Manual local Terraform configuration check; not an Actions workflow step. | Reported pass. It does not establish AWS permissions or runtime behavior. |
+| `bash -n` | Manual shell syntax check for boot scripts; not an Actions workflow step. | Reported pass after LF line endings were corrected. Syntax validity does not prove command arguments or runtime behavior. |
+| Ansible syntax check | Manual playbook syntax check; not a workflow step. | A prior playbook revision reportedly passed. It does not test behavior on a host. |
+| Checkov and tfsec | No configuration or run was found in the reviewed files. | Not found. |
+| Maven tests and WAR build | Automated through `scripts/build.sh` in GitHub build/test and deploy workflows and Jenkins (`build-test.yml:34-35`; `deploy.yml:49-50`; `Jenkinsfile:56-64`). The script runs `mvn -B clean package`, requires a positive test count, and checks the WAR (`scripts/build.sh:34-39`). | The local Maven log reports nine passing tests and a successful build, but does not identify the CI/Jenkins run. No suite for Jenkinsfile, Terraform, or Ansible was found. |
+| Test coverage | The pinned submodule POM has an active JaCoCo configuration: prepare-agent and a report goal bound to `post-integration-test` (`vprofile-src/pom.xml:276-295`). The shared script runs only through `mvn clean package` (`scripts/build.sh:34`). | JaCoCo is configured, but the current build command does not reach the report phase; no coverage report is recorded. This is not evidence that coverage is absent from the POM. |
+
+The accepted durable-bucket `terraform:S6258` reason is: **“Access logging deferred by design for a single-owner portfolio project. Buckets hold a build artifact and transient transfer files. Revisit if the data or scope changes.”** (`docs/decisions/new-account-deployment-design.md:215`). This accepts reduced request-audit history; it does not enable logging.
+
+The bootstrap-bucket `terraform:S6258` is reported accepted, but no exact reason text was found in the checked files, including `docs/decisions/terraform-bootstrap-s3-backend.md`. Do not fill in a reason from memory or infer it from the durable-bucket acceptance.
+
+## Limits
+
+This comparison uses repository source and records available at the review checkpoint. It does not re-open GitHub run pages, Jenkins, SonarQube Cloud, AWS state, or billing. The run summaries are author-reported unless explicitly described above as file evidence; no claim of security clearance, complete parity, or complete coverage is made.
