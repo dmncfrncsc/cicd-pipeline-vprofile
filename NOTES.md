@@ -6,7 +6,7 @@ These notes are being built as both the technical record and your learning guide
 
 Project 3 uses the instructor-provided VProfile sample web app to practice an automated build and delivery flow. Git records saved versions of files, and AWS (Amazon Web Services) provides computers, storage, and other services over the internet.
 
-In Phase 1, GitHub Actions (GitHub's tool for running automated jobs) gets the pinned source, runs the shared build script with Maven (a Java build tool), and reports pass or fail; this phase has no AWS access. Jenkins (a server for running build and deployment jobs) was added later behind separate design and cost gates; one Jenkins build/test/deploy run is now reported in the [fifth-test checkpoint](PROGRESS-HISTORY.md#2026-10-29-jenkins-test-5-successful-pipeline-and-ephemeral-teardown).
+In Phase 1, GitHub Actions (GitHub's tool for running automated jobs) gets the pinned source, runs the shared build script with Maven (a Java build tool), and reports pass or fail; this phase has no AWS access. Jenkins (a server for running build and deployment jobs) was added later behind separate design and cost gates; the fifth-test build/test/deploy report is in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
 
 ## Documentation rule: explain new terms
 
@@ -150,7 +150,7 @@ The author selected Option 2 for planning: the agent's instance role assumes a s
 
 The author selected Jenkins's credential store on the disposable controller for the DB password, RabbitMQ password, and deploy-role ARN. These values must be loaded again after every rebuild. The alternative, reading them from Parameter Store at runtime, was not selected. The fifth-test conversation reports that the pipeline used its Jenkins credentials successfully; secret values are not recorded here. Preserve the trusted-build restriction because code on the build agent can use deployment access. The author also selected SSM port forwarding for UI access through a separate operator role and a custom fixed-remote-port document; the fifth-test screenshots reportedly showed one successful session. The conversation's claim about Jenkins encryption at rest has not been independently researched here. See the [J1 design record](docs/decisions/new-account-deployment-design.md) for the decisions and evidence limits.
 
-**Earlier Jenkins UI SSM policy proposal (superseded; review-only):** an earlier draft selected `p3-terraform` as the WSL caller and used the AWS-owned `AWS-StartPortForwardingSession` document. The selected design instead uses a separate operator role and a custom document with remote port 8080 fixed. The fifth-test conversation reports that the operator opened one session and that the Jenkins dashboard loaded; this is not a fresh policy read-back or proof of continuing access. The earlier [review-only policy copy](docs/drafts/jenkins-ui-ssm-port-forwarding-policy-review.md) reflects the old direction and is not the selected implementation. Keep user-side session permissions distinct from the controller instance role's SSM Agent permissions. The custom role and document are described in the [deployment design decision](docs/decisions/new-account-deployment-design.md#2026-10-29-ssm-access-applied-and-public-submodule-confirmed-before-jenkins-test-5) and latest [test checkpoint](docs/decisions/new-account-deployment-design.md#2026-10-29-jenkins-test-5-successful-pipeline-and-ephemeral-teardown).
+**Earlier Jenkins UI SSM policy proposal (superseded; review-only):** an earlier draft selected `p3-terraform` as the WSL caller and used the AWS-owned `AWS-StartPortForwardingSession` document. The selected design instead uses a separate operator role and a custom document with remote port 8080 fixed. The fifth-test conversation reports that the operator opened one session and that the Jenkins dashboard loaded; this is not a fresh policy read-back or proof of continuing access. The earlier [review-only policy copy](docs/drafts/jenkins-ui-ssm-port-forwarding-policy-review.md) reflects the old direction and is not the selected implementation. Keep user-side session permissions distinct from the controller instance role's SSM Agent permissions. The custom role and document are described in the [deployment design decision](docs/decisions/new-account-deployment-design.md) and [test history](PROGRESS-HISTORY.md).
 
 Project 3's infrastructure and playbooks are being designed from project requirements. Course provisioning scripts are not required and will not be inspected or copied; choose the target operating system (OS), the core software that runs a computer, from verified AWS, SSM, and package needs rather than script similarity.
 
@@ -192,7 +192,7 @@ The WAR must stay private. Do not put it in a public repo, release, or log. The 
 
 **Why keep three separate buckets until project close (prior-account D1; new-account buckets reported created):** The state bucket keeps Terraform's record, the WAR bucket is for build files, and the Ansible bucket is for short-lived helper files. In the prior account, bootstrap created the state bucket and D1 added the WAR and transfer buckets. In the new account, author-supplied output reports the state, WAR, and transfer buckets created. Keeping durable buckets outside the per-session stack means destroying that stack can leave them in place, but they need separately approved cleanup and must be empty before deletion. Account alignment remains reported by the author, not independently verifiable in this record.
 
-**Versioning, overwrite, and expiry (prior-account D1 choices; S3 behavior reported, not independently checked):** An S3 key is a file's name in the bucket. Without versioning, uploading to an existing key replaces the old file, and deleting a file removes it for good. For example, if CI uploaded a different file to `vprofile-v2-build42-9f22748.war`, the build 42 WAR would be gone. Unique keys make that unlikely but do not prevent it. A lifecycle rule that expires by age fits unique keys; "keep the last N builds" does not, because S3 counts versions of one key, not different keys. Expiry is a cleanup, not an exact timer. In a versioned bucket, expiry adds a delete marker (a record that makes the object look deleted while older versions remain), and old versions need their own rule. The new-account Terraform state bucket is recorded as versioned with a 30-day rule for old versions. Prior-account D1 WAR and Ansible buckets were not versioned; those settings do not establish the new-account transfer bucket's setting. The earlier new-account CLI read returned no status, while a later author-supplied Properties screenshot reports `Disabled` for the named transfer bucket; see the [new-account design decision](docs/decisions/new-account-deployment-design.md#2026-10-23-ansible-transfer-bucket-stays-unversioned-planning-only).
+**Versioning, overwrite, and expiry (prior-account D1 choices; S3 behavior reported, not independently checked):** An S3 key is a file's name in the bucket. Without versioning, uploading to an existing key replaces the old file, and deleting a file removes it for good. For example, if CI uploaded a different file to `vprofile-v2-build42-9f22748.war`, the build 42 WAR would be gone. Unique keys make that unlikely but do not prevent it. A lifecycle rule that expires by age fits unique keys; "keep the last N builds" does not, because S3 counts versions of one key, not different keys. Expiry is a cleanup, not an exact timer. In a versioned bucket, expiry adds a delete marker (a record that makes the object look deleted while older versions remain), and old versions need their own rule. The new-account Terraform state bucket is recorded as versioned with a 30-day rule for old versions. Prior-account D1 WAR and Ansible buckets were not versioned; those settings do not establish the new-account transfer bucket's setting. The earlier new-account CLI read returned no status, while a later author-supplied Properties screenshot reports `Disabled` for the named transfer bucket; see the [new-account design decision](docs/decisions/new-account-deployment-design.md).
 
 **Health check (planned):** A health check asks whether the deployed VProfile app is ready to serve requests. The port, real app URL (web address), and response that proves the app is healthy are undecided; Tomcat, the Java web server, on port `8080` is only a candidate from memory.
 
@@ -310,7 +310,7 @@ RabbitMQ's current 4.2 production guidance recommends at least 4 CPU cores and 4
 
 ### Ansible transfer bucket and presigned URLs
 
-**Technical detail (planned; source reviewed, behavior not run):** A presigned URL is a temporary web address that lets its holder fetch one S3 object for a limited time without AWS credentials. The controller creates one for a helper file, and the instance downloads it with `curl`, a command-line tool for fetching web addresses. The URL uses the permission of the identity that created it, so the controller needs the S3 permissions; the instance does not need ongoing access to the transfer bucket for the documented path. Anyone who gets the URL can fetch that object until it expires, so do not print it in logs. In `amazon.aws` 11.4.0, the plugin finds the bucket's Region with `HeadBucket` instead of `GetBucketLocation`; `HeadBucket` needs `s3:ListBucket` on the bucket ARN. Author-supplied draft output shows `s3:GetBucketLocation` removed from the transfer-bucket statement and matching boundary; keep that change conditional on pinning `amazon.aws` to 11.4.0 or rechecking the chosen version's source. The WAR-bucket statement is unchanged. The transfer bucket is planned unversioned because the draft lacks `s3:DeleteObjectVersion`; its AWS versioning state has not been checked. Adding `s3:AbortMultipartUpload` was left for evidence from a real run. The instance still needs a network path to S3 (through NAT or the proposed S3 gateway endpoint) and `curl`; whether the AMI includes `curl` and whether the plugin removes helper objects after normal or interrupted runs remain unconfirmed. See the [new-account design decision](docs/decisions/new-account-deployment-design.md), [PROGRESS.md](PROGRESS.md#open-risks-and-gaps), the [source-check history](PROGRESS-HISTORY.md), and [versioned plugin source](https://github.com/ansible-collections/amazon.aws/blob/11.4.0/plugins/connection/aws_ssm.py).
+**Technical detail (planned; source reviewed, behavior not run):** A presigned URL is a temporary web address that lets its holder fetch one S3 object for a limited time without AWS credentials. The controller creates one for a helper file, and the instance downloads it with `curl`, a command-line tool for fetching web addresses. The URL uses the permission of the identity that created it, so the controller needs the S3 permissions; the instance does not need ongoing access to the transfer bucket for the documented path. Anyone who gets the URL can fetch that object until it expires, so do not print it in logs. In `amazon.aws` 11.4.0, the plugin finds the bucket's Region with `HeadBucket` instead of `GetBucketLocation`; `HeadBucket` needs `s3:ListBucket` on the bucket ARN. Author-supplied draft output shows `s3:GetBucketLocation` removed from the transfer-bucket statement and matching boundary; keep that change conditional on pinning `amazon.aws` to 11.4.0 or rechecking the chosen version's source. The WAR-bucket statement is unchanged. The transfer bucket is planned unversioned because the draft lacks `s3:DeleteObjectVersion`; its AWS versioning state has not been checked. Adding `s3:AbortMultipartUpload` was left for evidence from a real run. The instance still needs a network path to S3 (through NAT or the proposed S3 gateway endpoint) and `curl`; whether the AMI includes `curl` and whether the plugin removes helper objects after normal or interrupted runs remain unconfirmed. See the [new-account design decision](docs/decisions/new-account-deployment-design.md), [current handoff](PROGRESS.md#current-status), the [source-check history](PROGRESS-HISTORY.md), and [versioned plugin source](https://github.com/ansible-collections/amazon.aws/blob/11.4.0/plugins/connection/aws_ssm.py).
 
 **VProfile service names (reported from configuration):** The app expects `db01` for MySQL, `mc01` for Memcached, and `rmq01` for RabbitMQ. Unverified: the app uses MySQL Connector/J 8.0.33 (MySQL's Java connection library), `com.mysql.cj.jdbc.Driver` (the code component that connects the app to a database), and `jdbc:mysql://db01:3306/accounts`; MariaDB is another database product, and this app's compatibility with it is untested. Its standby Memcached address is `127.0.0.2`, a loopback address that refers to the same host from the app's point of view. The standby check is a code reading only; see the Memcached paragraph. Binding a service to loopback and blocking inbound network traffic with a security group are separate controls. The configuration contains fixed service credentials, and their values do not belong in these notes.
 
@@ -623,7 +623,7 @@ The new-account architecture and alternatives are in the [design decision](docs/
 
 **Extra fields in the live responses:** the encryption outputs included `BucketKeyEnabled: false` and `BlockedEncryptionTypes: SSE-C`; the lifecycle output included `TransitionDefaultMinimumObjectSize: all_storage_classes_128K`. The Terraform code did not set these fields. Their cause or default status was not checked against AWS documentation in this update, so do not label them as confirmed defaults.
 
-**Accepted is not fixed:** SonarCloud findings `terraform:S6258` (access logging) and `terraform:S6249` (HTTPS-only policy) were reported Accepted for both durable buckets. A separate `terraform:S6258` finding on the bootstrap bucket was later accepted with a stated reason; the author reports the main-branch Quality Gate turned green afterward, without a code change. No logging was added by accepting the issue. The author reports both HTTPS-only policies saved. WAR policy text was reported read back against the draft; for transfer, the save banner and matching pasted JSON were reported, but a separate fresh read-back is unclear. The `S6249` findings remain Accepted, not marked fixed; policy text does not prove actual HTTP-denial behavior. In the reported Sonar summary, three CSS findings in `vprofile-src` remained Open and coverage was not configured. See the [design decision](docs/decisions/new-account-deployment-design.md) and [history](PROGRESS-HISTORY.md).
+**Accepted is not fixed:** SonarCloud findings `terraform:S6258` (access logging) and `terraform:S6249` (HTTPS-only policy) were reported Accepted for both durable buckets. A separate `terraform:S6258` finding on the bootstrap bucket was later accepted with a stated reason; the author reports the main-branch Quality Gate turned green afterward, without a code change. No logging was added by accepting the issue. The author reports both HTTPS-only policies saved. WAR policy text was reported read back against the draft; for transfer, the save banner and matching pasted JSON were reported, but a separate fresh read-back is unclear. The `S6249` findings remain Accepted, not marked fixed; policy text does not prove actual HTTP-denial behavior. In the reported Sonar summary, three CSS findings in `vprofile-src` remained Open. JaCoCo is configured in the pinned source POM, but the shared build command does not reach its report phase and no coverage report is recorded; do not describe coverage as “not configured.” See the [design decision](docs/decisions/new-account-deployment-design.md) and [history](PROGRESS-HISTORY.md).
 
 **Clipboard evidence:** the first `clip.exe` copy produced no visible output, which did not establish what was on the clipboard. The author recopied the saved WAR policy and verified the pasted JSON before saving. For file-to-clipboard steps, confirm the text at the destination before submitting it; a silent copy command is not a content check.
 
@@ -872,7 +872,7 @@ The supplied WSL output reports `bash -n` passing for both boot scripts, `terraf
 
 **Git Bash and WSL have separate command histories (author-supplied output, 2026-10-28):** A `history` search in Git Bash returned only Git Bash commands; running the same search in Ubuntu WSL exposed Terraform and Systems Manager commands absent from the first result. Shell history is local to the shell environment, so an empty or irrelevant result in one shell does not establish that a command was never run. Search in the same shell where the command was issued, and use the prompt/path to identify that environment.
 
-**Plugin warnings cover resolved dependencies, not just direct entries:** `jenkins/plugins.txt` lists six requested plugins and pins only `configuration-as-code`; the other five requested entries have no explicit version. The supplied controller log later associated 20 advisory entries with seven resolved plugin names, including `script-security` version `1385.v7d2d9ec4d909`. `script-security` is not a direct entry in `plugins.txt`; the log reports the resolved version, not a pinned version. The warning list identifies some affected dependencies but is not the complete installed-plugin inventory. `--latest=false` does not pin unversioned requested plugins or their dependency tree. Preserve the observed warning text and resolved plugin versions, review advisories before changing pins, and do not claim applicability, exploitability, remediation, or a security-cleared plugin set without evidence.
+**Plugin warnings cover resolved dependencies, not just direct entries:** `jenkins/plugins.txt` lists six requested plugins and pins only `configuration-as-code`; the other five requested entries have no explicit version. The earlier controller log associated 20 advisory entries with seven resolved plugin names, including `script-security` version `1385.v7d2d9ec4d909`; `script-security` was a resolved dependency, not a direct entry in `plugins.txt`. That warning list was not the complete installed-plugin inventory. The `--latest=false` option was reported to select minimum dependency versions; it did not pin the unversioned requested plugins or their dependency tree. PR #135 later removed that option. The seventh-test inventory and version comparison below record the subsequent result. Do not treat one clean warning screen or one resolved inventory as a security clearance or a guarantee of future versions.
 
 ## Sixth-test resolved Jenkins plugin inventory
 
@@ -942,6 +942,90 @@ A **resolved-plugin inventory** is the list of plugins Jenkins reports as instal
 | `workflow-support` | `989.va_20a_1a_57710a_` |
 
 The inventory includes the seven plugin names associated with the 20 boot-time advisory entries. The transcript says an official-source research attempt began and read six pages, but the response did not load; no citations, applicability assessment, or conclusions were preserved. Do not infer that the findings were reviewed or remediated. Use this list as the version evidence for a later, separately authorized advisory review.
+
+## Seventh-test resolved Jenkins plugin inventory
+
+The author pasted the plugin-manager JSON response from the seventh Jenkins test, reported on 2026-11-05 at `50b3172544366eebb63557912b9126b819532dfc`. Parsing that response yields **63 resolved plugins**. The three names absent from the sixth-test inventory are `jackson-annotations2-api`, `jakarta-xml-bind-api`, and `woodstox-core-api`; all 60 names in the earlier inventory are still present, but 47 shared names have different versions. This reflects two different boot-time resolutions after PR #135 removed `--latest=false`; it is not a complete pin set or a promise of future resolution.
+
+| Plugin | Resolved version |
+| --- | --- |
+| `antisamy-markup-formatter` | `173.v680e3a_b_69ff3` |
+| `apache-httpcomponents-client-4-api` | `4.5.14-269.vfa_2321039a_83` |
+| `asm-api` | `9.11.1-226.vff833a_e4c58e` |
+| `bootstrap5-api` | `5.3.8-1048.va_c299057e35c` |
+| `bouncycastle-api` | `2.30.1.86.2-310.v4655f6742752` |
+| `branch-api` | `2.1303.v9f3b_95dc329d` |
+| `caffeine-api` | `3.3.1-214.v18eb_56b_34920` |
+| `cloudbees-folder` | `6.1107.v31f8955765c8` |
+| `commons-lang3-api` | `3.21.0-122.v6a_ea_4fd34049` |
+| `commons-text-api` | `1.15.0-218.va_61573470393` |
+| `configuration-as-code` | `2136.veb_3a_554550b_f` |
+| `credentials` | `1514.vb_01eb_014e7d4` |
+| `credentials-binding` | `728.v902a_273b_8947` |
+| `display-url-api` | `2.217.va_6b_de84cc74b_` |
+| `durable-task` | `686.v80ff80875b_82` |
+| `font-awesome-api` | `7.3.1-1013.v0835a_879ec6d` |
+| `git` | `5.11.0` |
+| `git-client` | `6.6.1` |
+| `gson-api` | `2.15.0-212.v085f60a_8093b_` |
+| `instance-identity` | `203.v15e81a_1b_7a_38` |
+| `ionicons-api` | `94.vcc3065403257` |
+| `jackson-annotations2-api` | `2.22-19.v10a_a_582ea_26e` |
+| `jackson2-api` | `2.22.4-449.v4ee9f4ec4123` |
+| `jakarta-activation-api` | `2.1.4-1` |
+| `jakarta-mail-api` | `2.1.5-1` |
+| `jakarta-xml-bind-api` | `4.0.9-19.v2b_a_5b_44d9a_1c` |
+| `javax-activation-api` | `1.2.0-8` |
+| `jaxb` | `2.3.9-143.v5979df3304e6` |
+| `job-dsl` | `3732.v9a_c49a_61a_313` |
+| `joda-time-api` | `2.15.1-211.ve499f52b_da_33` |
+| `json-api` | `20260814-226.v20f9685d642c` |
+| `mailer` | `534.v1b_36f5864073` |
+| `mina-sshd-api-common` | `2.19.0-192.v2b_a_7b_2c1dc71` |
+| `mina-sshd-api-core` | `2.19.0-192.v2b_a_7b_2c1dc71` |
+| `pipeline-build-step` | `601.v6d4c6d1a_9dc7` |
+| `pipeline-groovy-lib` | `822.vc95f70dea_db_7` |
+| `pipeline-input-step` | `560.v56198a_642157` |
+| `pipeline-milestone-step` | `152.v6e22b_8cfc66c` |
+| `pipeline-model-api` | `2.2293.v6e7193cec599` |
+| `pipeline-model-definition` | `2.2293.v6e7193cec599` |
+| `pipeline-model-extensions` | `2.2293.v6e7193cec599` |
+| `pipeline-stage-step` | `345.va_96187909426` |
+| `pipeline-stage-tags-metadata` | `2.2293.v6e7193cec599` |
+| `plain-credentials` | `199.v9f8e1f741799` |
+| `plugin-util-api` | `7.1403.vd380b_c42e90c` |
+| `prism-api` | `1.30.0-741.v034eb_0b_0a_a_fa_` |
+| `scm-api` | `728.vc30dcf7a_0df5` |
+| `script-security` | `1436.v1082791135e4` |
+| `snakeyaml-api` | `2.7-152.vc672728cf536` |
+| `ssh-credentials` | `372.va_250881b_08cd` |
+| `structs` | `362.va_b_695ef4fdf9` |
+| `variant` | `70.va_d9f17f859e0` |
+| `woodstox-core-api` | `7.3.0-16.v017f30ed004c` |
+| `workflow-aggregator` | `608.v67378e9d3db_1` |
+| `workflow-api` | `1429.v7a_1b_efb_a_f7c5` |
+| `workflow-basic-steps` | `1129.v60e3c7e6654d` |
+| `workflow-cps` | `4403.v471713a_cea_19` |
+| `workflow-durable-task-step` | `1479.v56e587f413a_7` |
+| `workflow-job` | `1622.vc41c189cb_e5f` |
+| `workflow-multibranch` | `842.v3a_b_59b_57b_e6e` |
+| `workflow-scm-step` | `487.v41313a_96b_65d` |
+| `workflow-step-api` | `724.v538c2362b_dfb_` |
+| `workflow-support` | `1028.vc22910142650` |
+
+### Plugin advisory and Jenkins core research (reported from authorized official-source review)
+
+The earlier controller warning block listed 20 plugin-advisory entries across seven names: `git-client`, `jakarta-mail-api`, `pipeline-build-step`, `pipeline-groovy-lib`, `script-security`, `workflow-cps`, and `workflow-multibranch`. The seventh-test versions shown above were reported at or above the fixes identified in the official-source review. The author also reports the Manage Jenkins page no longer displayed the plugin-advisory warning. This checks only those seven observed names/versions on one boot; it is not a security clearance of Jenkins or the complete plugin set. The exact advisory URLs were not retained in the supplied conversation.
+
+The separate Jenkins core research matched the warning banner to the Jenkins Security Advisory dated 2026-10-28. The supplied result reports LTS 2.580.2 and weekly 2.588 as fixed versions, with 2.580.2 fixing the issues listed in that advisory. The 2.580.2 changelog was reported to list no notable upgrade-note requirements, to include testing on JDK 21 and 25, and to state no minimum plugin version. Debian stable package metadata was reported to contain `jenkins=2.580.2`. These were prior authorized research results, not a new web check. The controller remains pinned to 2.580.1; no upgrade proposal, approval, or test boot is recorded. The research's per-issue exploitability assessments were inferred from the described private, single-admin, manually triggered setup and were not exploitability tests. Do not describe the setup as secure or cleared.
+
+### Seventh-test pipeline, artifact, cost, and quality notes
+
+The author reports Build #2 on 2026-11-05 at `50b3172544366eebb63557912b9126b819532dfc`: Maven `BUILD SUCCESS`, identity check passed, 79.4 MiB WAR upload to `s3://p3-vprofile-war-k7m3q9/vprofile-v2.war`, Ansible `ok=25 changed=16 failed=0`, and 10 users. Build #1 failed at the `INSTANCE_ID` input check before checkout. The `changed=16` recap is distinct from the sixth-test `changed=15`; the difference was not investigated. The reported destroy apply removed 24 resources, followed by bounded empty state/EC2/NAT/EIP/EBS checks in `us-east-1`; this does not establish zero charges or all-region cleanup.
+
+The S3 console was described as showing 12 versions of the WAR object, but `p3-terraform` was denied `s3:ListBucketVersions`; a selected old version was not retrieved. The artifact Definition of Done item is partly met. Approximate billing/credit screenshot readings dated 2026-11-05 were October about USD 1.70, November about USD 0.20–0.25 to date, USD 98.30 remaining on a Free Tier credit, a separate USD 20 Explore credit unused, estimated total usage USD 1.96, and credit expiry 2027-10-20. Account alignment, exact line items, exclusions, and complete service coverage were not established.
+
+The Maven log reports nine tests: `SampleTest` (1), `UserControllerTest` (6), `RoleTest` (1), and `UserTest` (1). JaCoCo is configured in `vprofile-src/pom.xml`, with the report goal bound to `post-integration-test`; the shared `mvn -B clean package` command does not reach that phase. No coverage report is recorded, and no test suite for the Jenkinsfile, Terraform, or Ansible was found. Reported manual checks include `terraform fmt -check`, `terraform validate`, `bash -n`, and an Ansible syntax check. Checkov and tfsec configuration or runs were not found in the reviewed files. The bootstrap bucket's accepted `terraform:S6258` reason remains absent from the checked repository files; the durable-bucket reason is recorded in [the design decision](docs/decisions/new-account-deployment-design.md).
 
 **Jenkins first-build parameter failure (local `Jenkinsfile` and author-supplied sixth-test log):** A pipeline parameter is a named input value supplied to a build, such as the app instance ID. In the sixth test, Build #1 stopped in `Check input` with `INSTANCE_ID: unbound variable`; the `Jenkinsfile` declares `INSTANCE_ID` and `FORCE_FAILURE`, and that shell enables Bash's unset-variable check with `set -u`. Checkout, compilation, and deployment were skipped, so this failure was not an application or AWS deployment failure. The later Build with Parameters form reportedly showed both fields. That sequence is consistent with the first build running before Jenkins made its parameter definitions available to the shell, but it does not prove a general Jenkins rule. When a first run fails this way, use the console log to identify the stage and missing input; do not infer that downstream stages ran or blindly retry a deployment.
 
