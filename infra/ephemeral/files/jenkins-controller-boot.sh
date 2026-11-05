@@ -54,7 +54,7 @@ retry install_awscli
 install -d -m 0755 /etc/apt/keyrings
 retry curl --proto "=https" --tlsv1.2 -fsSL -o /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
 echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" > /etc/apt/sources.list.d/jenkins.list
-retry apt_install jenkins=2.580.1
+retry apt_install jenkins=2.580.2
 rm -f /usr/sbin/policy-rc.d
 
 # 2. Fetch the config files from the pinned commit.
