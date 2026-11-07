@@ -14,6 +14,12 @@ After creating the new account's dedicated state bucket with local state, migrat
 
 This decision applies only to Project 3's new-account bootstrap. It does not authorize state sharing, infrastructure reuse, deployment, or bucket deletion.
 
+## Bootstrap bucket access-logging finding
+
+**Reported status (author-supplied SonarQube Cloud screenshot and Activity text; 2026-11-07 review):** The main-branch `terraform:S6258` issue, “Cloud resources logging should not be disabled,” was shown as Accepted on `infra/bootstrap/main.tf:5`, resource `aws_s3_bucket.state`. The supplied Activity entries show a comment added and the status changed from OPEN to ACCEPTED on Oct 24, 2026 at 3:43 PM (timezone not stated). The comment reads: “State bucket access logging deferred for portfolio scope. This accepts reduced request audit history; it does not fix logging.”
+
+This records the author's acceptance rationale, not a logging implementation or fix. The issue's current SonarQube Cloud status was not checked live.
+
 ## Account-wide actions and credit safeguard
 
 The author directed that the AWS Organizations console not be opened or used, including for read-only inspection of organization-level controls. In the prior account, creating an Organization was followed by credit expiry, and AWS Support's first reply, identified as AI-generated, linked the events. This does not establish causation or the effect of any Organizations action on credits in this account. As a precaution, avoid account-wide actions that could expire credits and stop for explicit direction before changing any account-wide setting. Known actions to avoid include Organization or Control Tower setup, Identity Center changes, account-plan changes or closure, Partner Network membership, Professional Services contracts, Enterprise Agreements, Skill Builder Team subscriptions, and HIPAA/SEC designations; this list is not exhaustive.
