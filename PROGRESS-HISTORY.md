@@ -992,3 +992,9 @@ At this 2026-11-05 checkpoint, the local Maven log reported nine tests: `SampleT
 **Role trust and human retrieval path (local Terraform files and author-reported teardown):** `infra/durable/deploy-role.tf` defines `p3-vprofile-deploy` with GitHub OIDC trust constrained to the `production` environment; `infra/durable/jenkins-roles.tf` defines `p3-vprofile-jenkins-deploy` trusting only the Jenkins agent role. The files do not define a laptop/WSL human path to assume either deploy role. The Jenkins test environment was reported torn down. These are local configuration and historical teardown evidence, not a live IAM or environment check.
 
 **Revised artifact acceptance:** The artifact DoD item is closed against a narrower scope: private versioned storage and non-root pipeline upload, with deployment from the local build. Retrieval of a named S3 version by a non-root identity remains unproven and is recorded as a limitation; the 2026-11-07 root-console download does not satisfy the original retrieval criterion. No workflow, script, Terraform, or application change was made for this documentation decision.
+
+## 2026-11-09 — Prior-account state-file cleanup
+
+**Author-supplied command output (not independently verified by Copilot):** The author reports that `terraform.tfstate` and `terraform.tfstate.pre-migration` were in `~/old-account-trash/` under the WSL home directory. A read-only check listed only S3 resource types in both files; comparison against the current account returned “does not match” for each, indicating that they described a prior account.
+
+The author reports deleting both files and the `old-account-trash` folder; the final `ls` reported that the folder no longer exists. No bucket or other AWS resource was changed. The deletion removed only the local Terraform records. This supersedes the earlier quarantine/recovery-window notes, which described the files' status at that earlier checkpoint.
