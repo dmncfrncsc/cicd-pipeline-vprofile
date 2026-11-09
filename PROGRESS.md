@@ -1,6 +1,6 @@
 # Project 3 session handoff
 
-**Updated 2026-11-09.** This handoff uses the supplied conversation and repository evidence; no live AWS, Jenkins, GitHub Actions, SonarQube Cloud, or billing check was performed. The parent-folder guidance files were available locally; their adoption in Claude Project Knowledge is unverified. The local checkout is on `main` at `f80ae10`, matching `origin/main`; `PROGRESS.md` already had an unstaged edit at the start of this update, and the inaccessible submodule's internal status remains unverified.
+**Updated 2026-11-09.** This handoff uses the supplied conversation and repository evidence; no live AWS, Jenkins, GitHub Actions, SonarQube Cloud, or billing check was performed. The parent-folder guidance files were available locally; their adoption in Claude Project Knowledge is unverified. Author-supplied Git output dated 2026-11-09 reports local `main` at `252e484` (PR #142 merged), up to date with `origin/main`, and a clean working tree. The same output reports `vprofile-src` at pinned commit `9f22748` with no prefix; availability of that commit to Jenkins is untested.
 
 ## Objective and current phase
 
@@ -8,7 +8,7 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 
 A resolved-plugin inventory is Jenkins' list of installed plugins after it selects requested plugins and their dependencies; the captured versions are recorded in [NOTES.md](NOTES.md).
 
-**Active phase:** Documentation is aligned to the revised artifact acceptance scope. The portfolio interview guide is complete and stored in the shared parent folder; it is not implementation evidence. The artifact and documentation criteria are complete; repository cleanup and a clean Git status remain pending.
+**Active phase:** Project closeout is complete against the documented acceptance scope. The portfolio interview guide is complete and stored in the shared parent folder; it is not implementation evidence. All thirteen Definition of Done items are complete based on recorded evidence and the author-supplied Git status dated 2026-11-09.
 
 ## Current status
 
@@ -18,7 +18,7 @@ Detailed boot, SSM, Terraform, IAM, submodule, validation, and cleanup evidence 
 
 ## Next safe step
 
-The artifact criterion is closed against the revised scope: private versioned storage and non-root pipeline upload, with deployment from the local build; non-root retrieval of a named version was not demonstrated. Documentation alignment is complete. Repository cleanup and a clean Git status remain pending; this documentation-only update leaves four modified, unstaged files, and no files were staged or committed. The cost, cleanup, and ownership item is complete to the evidence scope recorded below and in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md): the reports are bounded and are not a claim of zero account-wide charges or exhaustive inventory. The author plans a separate recheck of the three prior-account secrets on or after 2026-11-10; that follow-up is not a Project 3 completion blocker. Keep the two quarantined state files outside Git until the recovery window ends. This handoff does not authorize AWS or Git state changes.
+No Project 3 Definition of Done actions remain under the documented scope. The artifact criterion is closed against the revised scope: private versioned storage and non-root pipeline upload, with deployment from the local build; non-root retrieval of a named version was not demonstrated. The author-supplied 2026-11-09 Git status reports `main` at `252e484` up to date with `origin/main`, a clean working tree, and `vprofile-src` at pinned commit `9f22748` with no prefix; whether Jenkins can retrieve that commit remains untested. The cost, cleanup, and ownership item is complete to the evidence scope recorded below and in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md): the reports are bounded and are not a claim of zero account-wide charges or exhaustive inventory. The author plans a separate recheck of the three prior-account secrets on or after 2026-11-10; that follow-up is not a Project 3 completion blocker. Keep the two quarantined state files outside Git until the recovery window ends. This handoff does not authorize AWS or Git state changes.
 
 ## Safety boundaries
 
@@ -60,4 +60,4 @@ OIDC claim limits, the unpinned Session Manager plugin URL, and Canonical public
 - [x] Credentials and permissions are handled safely; the evidence and review scope are recorded in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
 - [x] Costs, cleanup, and cross-project ownership are documented and verified to the recorded scope: the 2026-11-06 billing screenshot reported October net USD 0 and a November estimate of USD 0; the Jenkins test teardown reported 24 resources destroyed and empty Terraform state plus bounded EC2/NAT/EIP/EBS queries in `us-east-1`; prior-account inventory and cleanup reads are recorded with their limits; and Project 3 state/resources are documented as separate from Projects 1 and 2. These are dated, author-supplied checks, not a current exhaustive inventory or a guarantee of zero charges. The author's on-or-after 2026-11-10 secret recheck is a separate follow-up.
 - [x] README, NOTES, PROGRESS, and justified design documents match the reported work and its evidence limits; artifact retrieval is explicitly documented as unproven and outside the revised acceptance criterion (aligned 2026-11-09).
-- [ ] Repository cleanup is complete and Git status is clean. Local `main` at `f80ae10` matched `origin/main` before this documentation update; four documentation files are now modified and unstaged, and the inaccessible submodule's internal status remains unverified.
+- [x] Repository cleanup is complete and Git status is clean. Author-supplied `git status` output dated 2026-11-09 reports `main` at `252e484` (PR #142 merged), up to date with `origin/main`, and a clean working tree. `git submodule status` showed `vprofile-src` at pinned commit `9f22748` with no prefix; availability of that commit to Jenkins is untested.
