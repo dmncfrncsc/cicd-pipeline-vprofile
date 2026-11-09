@@ -19,8 +19,10 @@ application itself was not authored here.
 
 Terraform defines durable and temporary AWS resources. Jenkins runs on an EC2
 controller and agent; the deployment playbook configures the target and checks
-application and backend health. Build outputs are stored privately. Public
-pull-request workflows do not receive AWS deployment credentials.
+application and backend health. Both deployment pipelines build the WAR locally,
+upload it to the private versioned S3 bucket, and deploy the local copy; neither
+reads the WAR back from S3. Public pull-request workflows do not receive AWS
+deployment credentials.
 
 ## Verification and limits
 
@@ -33,6 +35,13 @@ A one-off JaCoCo report measured the instructor-provided application's tests, no
 the CI/CD pipeline. It was not retained or added to CI. AWS inventory, billing,
 and teardown results are dated and bounded; they are not proof of current account
 state or zero charges.
+
+The 2026-11-07 S3 Versions view reportedly showed 15 WAR versions, and a download
+through the root console was reported. It was not tied to a specific version and
+does not demonstrate least-privilege retrieval. The artifact acceptance scope is
+narrowed to private versioned storage and non-root pipeline upload; retrieval of a
+named version by a non-root identity remains unproven and is a documented
+limitation.
 
 The course-provided application and built WAR are not distributed publicly. Keep
 credentials, Terraform state, and private artifacts out of public files and logs.
