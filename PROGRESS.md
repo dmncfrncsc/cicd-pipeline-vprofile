@@ -1,6 +1,6 @@
 # Project 3 session handoff
 
-**Updated 2026-11-07.** This handoff uses the supplied conversation and repository evidence; no live AWS, Jenkins, GitHub, SonarQube Cloud, or billing check was performed. The parent-folder guidance files were available locally; their adoption in Claude Project Knowledge is unverified. Before this documentation pass, the working tree showed four unstaged Project 3 documentation changes; no files were staged or untracked.
+**Updated 2026-11-09.** This handoff uses the supplied conversation and repository evidence; no live AWS, Jenkins, GitHub Actions, SonarQube Cloud, or billing check was performed. The parent-folder guidance files were available locally; their adoption in Claude Project Knowledge is unverified. The local checkout is on `main` at `f80ae10`, matching `origin/main`; `PROGRESS.md` already had an unstaged edit at the start of this update, and the inaccessible submodule's internal status remains unverified.
 
 ## Objective and current phase
 
@@ -8,17 +8,17 @@ Project 3 builds and tests the instructor-provided VProfile application, then ad
 
 A resolved-plugin inventory is Jenkins' list of installed plugins after it selects requested plugins and their dependencies; the captured versions are recorded in [NOTES.md](NOTES.md).
 
-**Active phase:** Project closeout. The portfolio interview guide is complete and stored in the shared parent folder; it is not implementation evidence. The first twelve Definition of Done items below are complete. Repository cleanup and a clean Git status remain.
+**Active phase:** Documentation is aligned to the revised artifact acceptance scope. The portfolio interview guide is complete and stored in the shared parent folder; it is not implementation evidence. The artifact and documentation criteria are complete; repository cleanup and a clean Git status remain pending.
 
 ## Current status
 
-**Delivery, quality, and artifact evidence (reported; details in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md)):** Both platforms have recorded successful deployments and same-app failure recovery using the shared build script and Ansible playbook; this meets the flow and recovery criteria. Identical platform configuration and distinct-release rollback are not DoD requirements. The private WAR store showed 15 versions and a non-current download was reported complete on 2026-11-07. JaCoCo was run once locally against the instructor-provided app tests, not CI/CD code. The bootstrap-bucket `terraform:S6258` finding is recorded as Accepted, not fixed. Jenkins 2.580.2 was reported with no core advisory among the displayed notices; the plugin inventory was not opened.
+**Delivery, quality, and artifact evidence (reported; details in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md)):** Both platforms have recorded successful deployments and same-app failure recovery using the shared build script and Ansible playbook; this meets the flow and recovery criteria. Both pipelines upload a locally built WAR to private versioned S3, then deploy the local copy; neither reads a WAR back from S3. Fifteen versions and a root-console download were reported on 2026-11-07, but no named-version, least-privilege retrieval was demonstrated. A 2026-11-09 author-supplied CLI result reports `p3-terraform` was denied `s3:ListBucketVersions`; it was not independently queried here. JaCoCo was run once locally against the instructor-provided app tests, not CI/CD code. The bootstrap-bucket `terraform:S6258` finding is recorded as Accepted, not fixed. Jenkins 2.580.2 was reported with no core advisory among the displayed notices; the plugin inventory was not opened.
 
 Detailed boot, SSM, Terraform, IAM, submodule, validation, and cleanup evidence is in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md) and [NOTES.md](NOTES.md). These are dated reports, not a live check of current AWS, Jenkins, GitHub, or billing state.
 
 ## Next safe step
 
-The only remaining Definition of Done item is repository cleanup and a clean Git status. The cost, cleanup, and ownership item is complete to the evidence scope recorded below and in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md): the reports are bounded and are not a claim of zero account-wide charges or exhaustive inventory. The author plans a separate recheck of the three prior-account secrets on or after 2026-11-10; that follow-up is not a Project 3 completion blocker. Keep the two quarantined state files outside Git until the recovery window ends. This handoff does not authorize AWS or Git state changes.
+The artifact criterion is closed against the revised scope: private versioned storage and non-root pipeline upload, with deployment from the local build; non-root retrieval of a named version was not demonstrated. Documentation alignment is complete. Repository cleanup and a clean Git status remain pending; this documentation-only update leaves four modified, unstaged files, and no files were staged or committed. The cost, cleanup, and ownership item is complete to the evidence scope recorded below and in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md): the reports are bounded and are not a claim of zero account-wide charges or exhaustive inventory. The author plans a separate recheck of the three prior-account secrets on or after 2026-11-10; that follow-up is not a Project 3 completion blocker. Keep the two quarantined state files outside Git until the recovery window ends. This handoff does not authorize AWS or Git state changes.
 
 ## Safety boundaries
 
@@ -54,10 +54,10 @@ OIDC claim limits, the unpinned Session Manager plugin URL, and Canonical public
 - [x] The WAR never appears in a public artifact, release, or log.
 - [x] Quality checks are justified, with outcomes and limits recorded. This includes the accepted `terraform:S6258` finding and the one-off JaCoCo result; neither is described as a fix or CI coverage.
 - [x] Source-use risk stance is documented; the course-provided application and WAR are not distributed publicly.
-- [x] A versioned artifact is retrievable from the approved private store; the 2026-11-07 record reports 15 WAR versions and a completed non-current version download.
+- [x] A versioned artifact is stored in the approved private store and uploaded by the non-root pipeline roles; deployment uses the locally built WAR. Non-root retrieval of a named version was not demonstrated. The 2026-11-07 root-console download does not satisfy the original criterion. Closed against this revised scope; the gap is a documented limitation.
 - [x] Deployment to the approved target and health behavior are verified through the reported deployment runs and health checks.
 - [x] Failure and rollback behavior is meaningfully demonstrated by the forced-failure path, same-app restoration, and post-restore checks.
 - [x] Credentials and permissions are handled safely; the evidence and review scope are recorded in [PROGRESS-HISTORY.md](PROGRESS-HISTORY.md).
 - [x] Costs, cleanup, and cross-project ownership are documented and verified to the recorded scope: the 2026-11-06 billing screenshot reported October net USD 0 and a November estimate of USD 0; the Jenkins test teardown reported 24 resources destroyed and empty Terraform state plus bounded EC2/NAT/EIP/EBS queries in `us-east-1`; prior-account inventory and cleanup reads are recorded with their limits; and Project 3 state/resources are documented as separate from Projects 1 and 2. These are dated, author-supplied checks, not a current exhaustive inventory or a guarantee of zero charges. The author's on-or-after 2026-11-10 secret recheck is a separate follow-up.
-- [x] README, NOTES, PROGRESS, and justified design documents match verified work; alignment was completed on 2026-11-07.
-- [ ] Repository cleanup is complete and Git status is clean. Six Project 3 documentation files are currently modified and unstaged; check `git status --short --branch` before cleanup.
+- [x] README, NOTES, PROGRESS, and justified design documents match the reported work and its evidence limits; artifact retrieval is explicitly documented as unproven and outside the revised acceptance criterion (aligned 2026-11-09).
+- [ ] Repository cleanup is complete and Git status is clean. Local `main` at `f80ae10` matched `origin/main` before this documentation update; four documentation files are now modified and unstaged, and the inaccessible submodule's internal status remains unverified.
