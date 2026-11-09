@@ -36,17 +36,12 @@ Use the adopted update guidance together with supplied terminal output, console 
 
 For the project's current approvals and next safe step, use [PROGRESS.md](PROGRESS.md). For why the AWS work is staged and what each session covers, use the [new-account design decision](docs/decisions/new-account-deployment-design.md). The preflight's account and metadata limits are recorded in the history. You do not need to learn every IAM or Terraform detail before continuing; ask for one decision or command to be explained at a time in everyday language. These notes are a reference, not a test.
 
-## What you should be able to explain by project completion
+## Interview preparation
 
-The notes are not yet a complete interview-preparation guide; some sections describe plans or technical evidence in detail. As the project advances, each major part and decision should explain:
-
-- What problem or risk it addresses, and how it fits into the end-to-end project.
-- Which method was chosen, what reasonable alternative was considered, and why the chosen method fits this project.
-- The trade-offs, costs, and risks the choice introduces.
-- What evidence shows the step worked, what remains uncertain, and whether it is planned, implemented, or verified.
-- Which parts came from the course or existing project, which you changed or carried out, and where Claude or Codex assisted.
-
-At completion, use these explanations to practice answering interview questions in your own words. Do not describe a proposal as implemented or an AI-assisted result as independently authored work. A concise interview guide can be prepared later from these notes and verified project evidence.
+The cross-project practice guide, interview questions, and draft resume bullets are
+in the shared parent folder: `DEVOPS-PORTFOLIO-INTERVIEW-GUIDE.md`. These notes
+remain the detailed Project 3 technical reference; distinguish verified work from
+plans and course-provided material when discussing the project.
 
 ## 1. Choose the exact app code
 
